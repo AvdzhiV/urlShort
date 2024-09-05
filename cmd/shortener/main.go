@@ -9,7 +9,7 @@ import (
 
 var urlMap = make(map[string]string)
 
-func generateShortUrl() string {
+func generateShortURL() string {
 	rand.Seed(time.Now().UnixNano())
 	letterBytes := "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
 	b := make([]byte, 6)
@@ -25,26 +25,26 @@ func shorterHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		origUrl := string(body)
-		shortUrl := generateShortUrl()
+		origURL := string(body)
+		shortURL := generateShortURL()
 
-		urlMap[shortUrl] = origUrl
+		urlMap[shortURL] = origURL
 
-		fullShortUrl := "http://localhost:8080/" + shortUrl
+		fullShortURL := "http://localhost:8080/" + shortURL
 
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(fullShortUrl))
+		w.Write([]byte(fullShortURL))
 	}
 
 	if r.Method == http.MethodGet {
-		shortUrl := r.URL.Path[1:]
-		origUrl, exists := urlMap[shortUrl]
+		shortURL := r.URL.Path[1:]
+		origURL, exists := urlMap[shortURL]
 		if !exists {
 			http.Error(w, "URL not found", http.StatusNotFound)
 			return
 		}
-		http.Redirect(w, r, origUrl, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, origURL, http.StatusTemporaryRedirect)
 
 	}
 
