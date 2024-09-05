@@ -4,13 +4,11 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"time"
 )
 
 var urlMap = make(map[string]string)
 
 func generateShortURL() string {
-	rand.Seed(time.Now().UnixNano())
 	letterBytes := "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
 	b := make([]byte, 6)
 	for i := range b {
