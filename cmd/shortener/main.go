@@ -51,7 +51,7 @@ func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	r := chi.NewRouter()
-	r.Get("/", shorterHandlerGet)
+	r.Get("/{shortURL}", shorterHandlerGet)
 	r.Post("/", shorterHandlerPost)
 	http.ListenAndServe(":8080", r)
 
