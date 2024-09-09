@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
 	"net/http"
@@ -17,7 +18,7 @@ func generateShortURL() string {
 	return string(b)
 }
 
-func shorterHandler(w http.ResponseWriter, r *http.Request) {
+func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -34,6 +35,8 @@ func shorterHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte(fullShortURL))
 	}
+}
+func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		shortURL := r.URL.Path[1:]
@@ -48,7 +51,9 @@ func shorterHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func main() {
-	http.HandleFunc("/", shorterHandler)
+	r := chi.NewRouter()
+	r.Get("/", shorterHandlerGet)
+	r.Post("/", shorterHandlerPost)
 	http.ListenAndServe(":8080", nil)
 
 }
