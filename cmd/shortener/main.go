@@ -46,10 +46,9 @@ func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Redirect(w, r, origURL, http.StatusTemporaryRedirect)
-
 	}
-
 }
+
 func main() {
 	r := chi.NewRouter()
 	r.Get("/", shorterHandlerGet)
