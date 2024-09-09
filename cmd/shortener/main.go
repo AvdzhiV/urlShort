@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 )
@@ -40,8 +39,8 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 
 func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		shortURL := r.URL.Path[1:]
-		log.Printf("Current urlMap contents: %v", urlMap)
+		shortURL := chi.URLParam(r, "shortURL")
+
 		origURL, exists := urlMap[shortURL]
 		if !exists {
 			http.Error(w, "URL not found", http.StatusNotFound)
