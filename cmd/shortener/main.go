@@ -54,6 +54,6 @@ func main() {
 	r := chi.NewRouter()
 	r.Get("/", shorterHandlerGet)
 	r.Post("/", shorterHandlerPost)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", r)
 
 }
