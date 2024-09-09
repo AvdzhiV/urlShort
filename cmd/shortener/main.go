@@ -27,12 +27,8 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 		}
 		origURL := string(body)
 		shortURL := generateShortURL()
-		log.Printf("Generated shortURL: %s", shortURL)
-		log.Printf("Saving original URL: %s under shortURL: %s", origURL, shortURL)
 
 		urlMap[shortURL] = origURL
-
-		log.Printf("URL map after POST: %v", urlMap)
 
 		fullShortURL := "http://localhost:8080/" + shortURL
 
@@ -60,5 +56,4 @@ func main() {
 	r.Get("/{shortURL}", shorterHandlerGet)
 	r.Post("/", shorterHandlerPost)
 	http.ListenAndServe(":8080", r)
-
 }
