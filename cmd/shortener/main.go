@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 )
@@ -26,8 +27,12 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 		}
 		origURL := string(body)
 		shortURL := generateShortURL()
+		log.Printf("Generated shortURL: %s", shortURL)
+		log.Printf("Saving original URL: %s under shortURL: %s", origURL, shortURL)
 
 		urlMap[shortURL] = origURL
+
+		log.Printf("URL map after POST: %v", urlMap)
 
 		fullShortURL := "http://localhost:8080/" + shortURL
 
@@ -40,6 +45,7 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		shortURL := r.URL.Path[1:]
+		log.Printf("Current urlMap contents: %v", urlMap)
 		origURL, exists := urlMap[shortURL]
 		if !exists {
 			http.Error(w, "URL not found", http.StatusNotFound)
@@ -51,7 +57,7 @@ func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	r := chi.NewRouter()
-	r.Get("/", shorterHandlerGet)
+	r.Get("/{shortURL}", shorterHandlerGet)
 	r.Post("/", shorterHandlerPost)
 	http.ListenAndServe(":8080", r)
 
