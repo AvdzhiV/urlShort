@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"flag"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -39,11 +40,19 @@ func (a *Config) Set(s string) error {
 func ParseParts() *Config {
 	flag.Parse()
 
-	cfg := &Config{
-		BaseURL: *baseURLFlag,
+	cfg := &Config{}
+
+	serverAddress := os.Getenv("SERVER_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = *addressFlag
 	}
 
-	err := cfg.Set(*addressFlag)
+	cfg.BaseURL = os.Getenv("BASE_URL")
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = *baseURLFlag
+	}
+
+	err := cfg.Set(serverAddress)
 	if err != nil {
 		return nil
 	}
