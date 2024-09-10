@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/AvdzhiV/urlShort/cmd/shortener/config"
+	"github.com/AvdzhiV/urlShort/cmd/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
