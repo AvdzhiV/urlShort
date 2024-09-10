@@ -25,7 +25,7 @@ func (a Config) String() string {
 func (a *Config) Set(s string) error {
 	parts := strings.Split(s, ":")
 	if len(parts) != 2 {
-		return errors.New("Need address in a form host:port")
+		return errors.New("need address in a form host:port")
 	}
 	port, err := strconv.Atoi(parts[1])
 	if err != nil {
