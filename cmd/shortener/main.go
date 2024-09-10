@@ -20,7 +20,7 @@ func generateShortURL() string {
 	return string(b)
 }
 
-func shorterHandlerPost(w http.ResponseWriter, r *http.Request, cfg *config.Config) {
+func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -31,7 +31,7 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request, cfg *config.Conf
 
 		urlMap[shortURL] = origURL
 
-		fullShortURL := cfg.BaseURL + "/" + shortURL
+		fullShortURL := config.ParseParts().BaseURL + "/" + shortURL
 
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "text/plain")
@@ -56,8 +56,6 @@ func main() {
 	cfg := config.ParseParts()
 	r := chi.NewRouter()
 	r.Get("/{shortURL}", shorterHandlerGet)
-	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-		shorterHandlerPost(w, r, cfg)
-	})
-	http.ListenAndServe(cfg.Host+":"+strconv.Itoa(cfg.Port), r)
+	r.Post("/", shorterHandlerPost)
+	http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r)
 }
