@@ -9,7 +9,7 @@ import (
 
 var (
 	addressFlag = flag.String("a", "localhost:8080", "Host for the server")
-	baseURLFlag = flag.String("b", "http://localhost:8000", "Base URL for the short links")
+	baseURLFlag = flag.String("b", "http://localhost:8080", "Base URL for the short links")
 )
 
 type Config struct {
@@ -21,6 +21,7 @@ type Config struct {
 func (a Config) String() string {
 	return a.Host + ":" + strconv.Itoa(a.Port)
 }
+
 func (a *Config) Set(s string) error {
 	parts := strings.Split(s, ":")
 	if len(parts) != 2 {
@@ -41,6 +42,7 @@ func ParseParts() *Config {
 	cfg := &Config{
 		BaseURL: *baseURLFlag,
 	}
+
 	err := cfg.Set(*addressFlag)
 	if err != nil {
 		return nil

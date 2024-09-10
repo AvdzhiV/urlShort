@@ -59,5 +59,5 @@ func main() {
 	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 		shorterHandlerPost(w, r, cfg)
 	})
-	http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r)
+	http.ListenAndServe(cfg.Host+":"+strconv.Itoa(cfg.Port), r)
 }
