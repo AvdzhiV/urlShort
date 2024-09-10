@@ -1,10 +1,12 @@
 package main
 
 import (
+	"github.com/AvdzhiV/urlShort/cmd/shortener/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
 	"net/http"
+	"strconv"
 )
 
 var urlMap = make(map[string]string)
@@ -18,7 +20,7 @@ func generateShortURL() string {
 	return string(b)
 }
 
-func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
+func shorterHandlerPost(w http.ResponseWriter, r *http.Request, cfg *config.Config) {
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -29,7 +31,7 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 
 		urlMap[shortURL] = origURL
 
-		fullShortURL := "http://localhost:8080/" + shortURL
+		fullShortURL := cfg.BaseURL + "/" + shortURL
 
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "text/plain")
@@ -51,8 +53,11 @@ func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	cfg := config.ParseParts()
 	r := chi.NewRouter()
 	r.Get("/{shortURL}", shorterHandlerGet)
-	r.Post("/", shorterHandlerPost)
-	http.ListenAndServe(":8080", r)
+	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+		shorterHandlerPost(w, r, cfg)
+	})
+	http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r)
 }

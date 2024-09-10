@@ -8,13 +8,14 @@ import (
 )
 
 var (
-	hostFlag = flag.String("host", "localhost", "Host for the server")
-	portFlag = flag.Int("port", 8080, "Port for the server")
+	addressFlag = flag.String("a", "localhost:8080", "Host for the server")
+	baseURLFlag = flag.String("b", "http://localhost:8000", "Base URL for the short links")
 )
 
 type Config struct {
-	Host string
-	Port int
+	Host    string
+	Port    int
+	BaseURL string
 }
 
 func (a Config) String() string {
@@ -34,11 +35,15 @@ func (a *Config) Set(s string) error {
 	return nil
 }
 
-func Init() *Config {
+func ParseParts() *Config {
 	flag.Parse()
 
-	return &Config{
-		Host: *hostFlag,
-		Port: *portFlag,
+	cfg := &Config{
+		BaseURL: *baseURLFlag,
 	}
+	err := cfg.Set(*addressFlag)
+	if err != nil {
+		return nil
+	}
+	return cfg
 }
