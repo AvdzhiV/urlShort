@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -24,18 +25,27 @@ func TestShorterHandlerPost(t *testing.T) {
 }
 
 func TestShorterHandlerGet(t *testing.T) {
-	urlMap["safqwe"] = "http://ya.ru"
+	// Инициализация тестовых данных
+	urlMap["safqwe"] = "http://example.com"
+
+	// Создание запроса
 	req := httptest.NewRequest(http.MethodGet, "/safqwe", nil)
 	rr := httptest.NewRecorder()
 
-	handler := http.HandlerFunc(shorterHandlerGet)
-	handler.ServeHTTP(rr, req)
+	// Настройка маршрутизатора с обработчиком
+	r := chi.NewRouter()
+	r.Get("/{shortURL}", shorterHandlerGet)
 
+	// Вызов маршрутизатора с запросом
+	r.ServeHTTP(rr, req)
+
+	// Проверка статуса ответа
 	if status := rr.Code; status != http.StatusTemporaryRedirect {
-		t.Errorf("wrong status code: ")
-	}
-	if location := rr.Header().Get("location"); location != "http://example.com" {
-		t.Errorf("wrong Location header")
+		t.Errorf("wrong status code: got %v want %v", status, http.StatusTemporaryRedirect)
 	}
 
+	// Проверка заголовка Location
+	if location := rr.Header().Get("Location"); location != "http://example.com" {
+		t.Errorf("wrong Location header: got %v want %v", location, "http://example.com")
+	}
 }
