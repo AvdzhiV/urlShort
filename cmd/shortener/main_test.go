@@ -34,7 +34,7 @@ func TestShorterHandlerGet(t *testing.T) {
 	if status := rr.Code; status != http.StatusTemporaryRedirect {
 		t.Errorf("wrong status code: ")
 	}
-	if location := rr.Header().Get("location"); location != "http://ya.ru" {
+	if location := rr.Header().Get("location"); location != "http://example.com" {
 		t.Errorf("wrong Location header")
 	}
 
