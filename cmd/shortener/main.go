@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/AvdzhiV/urlShort/cmd/config"
+	"github.com/AvdzhiV/urlShort/configs"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
@@ -31,7 +31,7 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 
 		urlMap[shortURL] = origURL
 
-		fullShortURL := config.ParseParts().BaseURL + "/" + shortURL
+		fullShortURL := configs.ParseParts().BaseURL + "/" + shortURL
 
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "text/plain")
@@ -53,7 +53,7 @@ func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	cfg := config.ParseParts()
+	cfg := configs.ParseParts()
 	r := chi.NewRouter()
 	r.Get("/{shortURL}", shorterHandlerGet)
 	r.Post("/", shorterHandlerPost)
