@@ -1,4 +1,4 @@
-package main
+package pkg
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -12,7 +12,7 @@ func TestShorterHandlerPost(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("http://localhost:8080"))
 	rr := httptest.NewRecorder()
 
-	handler := http.HandlerFunc(shorterHandlerPost)
+	handler := http.HandlerFunc(ShorterHandlerPost)
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusCreated {
@@ -34,7 +34,7 @@ func TestShorterHandlerGet(t *testing.T) {
 
 	// Настройка маршрутизатора с обработчиком
 	r := chi.NewRouter()
-	r.Get("/{shortURL}", shorterHandlerGet)
+	r.Get("/{shortURL}", ShorterHandlerGet)
 
 	// Вызов маршрутизатора с запросом
 	r.ServeHTTP(rr, req)

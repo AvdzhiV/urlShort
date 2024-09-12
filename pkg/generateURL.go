@@ -2,7 +2,7 @@ package pkg
 
 import "math/rand"
 
-func generateShortURL() string {
+func GenerateShortURL() string {
 	letterBytes := "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
 	b := make([]byte, 6)
 	for i := range b {

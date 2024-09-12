@@ -9,14 +9,14 @@ import (
 
 var urlMap = make(map[string]string)
 
-func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
+func ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			return
 		}
 		origURL := string(body)
-		shortURL := generateShortURL()
+		shortURL := GenerateShortURL()
 
 		urlMap[shortURL] = origURL
 
@@ -28,7 +28,7 @@ func shorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func shorterHandlerGet(w http.ResponseWriter, r *http.Request) {
+func ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		shortURL := chi.URLParam(r, "shortURL")
 
