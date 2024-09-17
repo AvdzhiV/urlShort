@@ -1,4 +1,4 @@
-package pkg
+package app
 
 import "math/rand"
 

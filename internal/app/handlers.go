@@ -1,4 +1,4 @@
-package pkg
+package app
 
 import (
 	"github.com/AvdzhiV/urlShort/configs"
