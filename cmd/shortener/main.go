@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/AvdzhiV/urlShort/configs"
-	"github.com/AvdzhiV/urlShort/internal/app"
+	"github.com/AvdzhiV/urlShort/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg := configs.ParseParts()
 	r := chi.NewRouter()
-	r.Get("/{shortURL}", app.ShorterHandlerGet)
-	r.Post("/", app.ShorterHandlerPost)
+	r.Get("/{shortURL}", handlers.ShorterHandlerGet)
+	r.Post("/", handlers.ShorterHandlerPost)
 	http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r)
 }

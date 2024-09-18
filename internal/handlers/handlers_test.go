@@ -1,4 +1,4 @@
-package app
+package handlers
 
 import (
 	"github.com/go-chi/chi/v5"
