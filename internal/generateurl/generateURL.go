@@ -1,4 +1,4 @@
-package muhehehe
+package generateurl
 
 import "math/rand"
 
