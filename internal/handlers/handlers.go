@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/AvdzhiV/urlShort/configs"
+	"github.com/AvdzhiV/urlShort/internal/generateurl"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
@@ -16,7 +17,7 @@ func ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		origURL := string(body)
-		shortURL := muhehehe.GenerateShortURL()
+		shortURL := generateurl.GenerateShortURL()
 
 		urlMap[shortURL] = origURL
 
