@@ -6,21 +6,41 @@ import (
 
 	"go.uber.org/zap"
 )
+type ResponseWriterWrapper struct {
+	http.ResponseWriter
+	Status int
+	Size   int
+}
+
+func (rw *ResponseWriterWrapper) WriteHeader(statusCode int) {
+	rw.Status = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (rw *ResponseWriterWrapper) Write(data []byte) (int, error) {
+	size, err := rw.ResponseWriter.Write(data)
+	rw.Size += size
+	return size, err
+}
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		next.ServeHTTP(w, r)
+		// Оборачиваем ResponseWriter
+		wrappedWriter := &ResponseWriterWrapper{ResponseWriter: w, Status: http.StatusOK}
 
-		zap.L().Info(
-			"Response",
+		// Передаём обработку следующему обработчику
+		next.ServeHTTP(wrappedWriter, r)
+
+		// Логируем информацию о запросе и ответе
+		zap.L().Info("Request and Response",
 			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.String("ip", r.RemoteAddr),
-			zap.String("duration", time.Since(start).String()),
+			zap.String("uri", r.RequestURI),
+			zap.Int("status", wrappedWriter.Status),
+			zap.Int("size", wrappedWriter.Size),
+			zap.Duration("duration", time.Since(start)),
 		)
-		
 	})
 }
 
