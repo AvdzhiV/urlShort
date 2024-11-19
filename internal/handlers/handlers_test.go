@@ -1,11 +1,14 @@
 package handlers
 
 import (
-	"github.com/go-chi/chi/v5"
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestShorterHandlerPost(t *testing.T) {
@@ -47,5 +50,30 @@ func TestShorterHandlerGet(t *testing.T) {
 	// Проверка заголовка Location
 	if location := rr.Header().Get("Location"); location != "http://example.com" {
 		t.Errorf("wrong Location header: got %v want %v", location, "http://example.com")
+	}
+}
+
+func TestShorterHandlerAPI(t *testing.T) {
+
+	reqBody := `{"url":"https://practicum.yandex.ru"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+
+	//вызов обработчкиа 
+	ShorterHandlerAPI(rr, req)
+
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("Handler returned wrong status code: got %v want %v", status, http.StatusCreated)
+	}
+	
+	//check res body
+	var resp map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Unable to parse response: %v", err)
+	}
+	if resp["result"] == "" {
+		t.Errorf("Expected non-empty result, got %v", resp["result"])
 	}
 }
