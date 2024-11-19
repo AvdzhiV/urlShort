@@ -18,13 +18,18 @@ func main() {
 		fmt.Println("Error, ", err)
 		return
 	}
+
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 	cfg := configs.ParseParts()
+
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
+
 	r.Get("/{shortURL}", handlers.ShorterHandlerGet)
 	r.Post("/", handlers.ShorterHandlerPost)
+	r.Post("/api/shorten", handlers.ShorterHandlerAPI)
+
 	if err := http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r); err != nil {
 		fmt.Println("Error")
 	}
