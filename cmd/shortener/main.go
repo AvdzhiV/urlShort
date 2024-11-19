@@ -25,6 +25,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
+	r.Use(middleware.GzipMiddleware)
 
 	r.Get("/{shortURL}", handlers.ShorterHandlerGet)
 	r.Post("/", handlers.ShorterHandlerPost)
@@ -34,3 +35,12 @@ func main() {
 		fmt.Println("Error")
 	}
 }
+
+/*
+	Задание по треку «Сервис сокращения URL»
+	Добавьте поддержку gzip в ваш сервис. Научите его:
+	Принимать запросы в сжатом формате (с HTTP-заголовком Content-Encoding).
+	Отдавать сжатый ответ клиенту, который поддерживает обработку сжатых ответов (с HTTP-заголовком Accept-Encoding).
+	Функция сжатия должна работать для контента с типами application/json и text/html.
+	Вспомните middleware из урока про HTTP-сервер, это может вам помочь.
+*/
