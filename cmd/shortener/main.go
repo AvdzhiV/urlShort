@@ -8,6 +8,7 @@ import (
 	"github.com/AvdzhiV/urlShort/configs"
 	"github.com/AvdzhiV/urlShort/internal/handlers"
 	"github.com/AvdzhiV/urlShort/internal/middleware"
+	"github.com/AvdzhiV/urlShort/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -22,14 +23,25 @@ func main() {
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 	cfg := configs.ParseParts()
+	if cfg == nil {
+		logger.Fatal("Failed to parse configuration")
+	}
+
+	store := storage.NewStorage(cfg.FileStoragePath)
+	if err := store.Load(); err != nil {
+		logger.Fatal("Failed to load storage", zap.Error(err))
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
 	r.Use(middleware.GzipMiddleware)
 
-	r.Get("/{shortURL}", handlers.ShorterHandlerGet)
-	r.Post("/", handlers.ShorterHandlerPost)
-	r.Post("/api/shorten", handlers.ShorterHandlerAPI)
+	handler := handlers.NewHandler(store, cfg)
+
+	r.Get("/{shortURL}", handler.ShorterHandlerGet)
+	r.Post("/", handler.ShorterHandlerPost)
+	r.Post("/api/shorten", handler.ShorterHandlerAPI)
+
 
 	if err := http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r); err != nil {
 		fmt.Println("Error")

@@ -7,49 +7,64 @@ import (
 
 	"github.com/AvdzhiV/urlShort/configs"
 	"github.com/AvdzhiV/urlShort/internal/generateurl"
+	"github.com/AvdzhiV/urlShort/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
 
-var urlMap = make(map[string]string)
+type Handler struct {
+	Store  *storage.Storage
+	Config *configs.Config
+}
 
-func ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			return
-		}
-		origURL := string(body)
-		shortURL := generateurl.GenerateShortURL()
-
-		urlMap[shortURL] = origURL
-
-		fullShortURL := configs.ParseParts().BaseURL + "/" + shortURL
-
-		w.WriteHeader(http.StatusCreated)
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(fullShortURL))
+func NewHandler(store *storage.Storage, cfg *configs.Config) *Handler {
+	return &Handler{
+		Store:  store,
+		Config: cfg,
 	}
 }
 
-func ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		shortURL := chi.URLParam(r, "shortURL")
-
-		origURL, exists := urlMap[shortURL]
-		if !exists {
-			http.Error(w, "URL not found", http.StatusNotFound)
-			return
-		}
-		http.Redirect(w, r, origURL, http.StatusTemporaryRedirect)
+func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return
 	}
+	origURL := string(body)
+	if origURL == "" {
+        http.Error(w, "Request body is empty", http.StatusBadRequest)
+        return
+    }
+	shortURL := generateurl.GenerateShortURL()
+
+	err = h.Store.Put(shortURL, origURL)
+	if err != nil {
+		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
+		return
+	}
+
+	fullShortURL := h.Config.BaseURL + "/" + shortURL
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(fullShortURL))
 }
 
-func ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
+	shortURL := chi.URLParam(r, "shortURL")
+
+	origURL, exists := h.Store.Get(shortURL)
+	if !exists {
+		http.Error(w, "URL not found", http.StatusNotFound)
+		return
+	}
+	http.Redirect(w, r, origURL, http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	type ShortenRequest struct {
-		URL string `json:"url"` //orig 
+		URL string `json:"url"`
 	}
 	type ShortenResponse struct {
-		Result string `json:"result"` // short 
+		Result string `json:"result"`
 	}
 
 	var req ShortenRequest
@@ -65,9 +80,13 @@ func ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortURL := generateurl.GenerateShortURL()
-	urlMap[shortURL] = req.URL
+	err := h.Store.Put(shortURL, req.URL)
+	if err != nil {
+		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
+		return
+	}
 
-	fullShortURL := configs.ParseParts().BaseURL + "/" + shortURL
+	fullShortURL := h.Config.BaseURL + "/" + shortURL
 
 	resp := ShortenResponse{Result: fullShortURL}
 	w.Header().Set("Content-Type", "application/json")
