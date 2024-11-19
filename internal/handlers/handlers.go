@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"encoding/json"
+	"io"
+	"net/http"
+
 	"github.com/AvdzhiV/urlShort/configs"
 	"github.com/AvdzhiV/urlShort/internal/generateurl"
 	"github.com/go-chi/chi/v5"
-	"io"
-	"net/http"
 )
 
 var urlMap = make(map[string]string)
@@ -40,4 +42,35 @@ func ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Redirect(w, r, origURL, http.StatusTemporaryRedirect)
 	}
+}
+
+func ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
+	type ShortenRequest struct {
+		URL string `json:"url"` //orig 
+	}
+	type ShortenResponse struct {
+		Result string `json:"result"` // short 
+	}
+
+	var req ShortenRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.URL == "" {
+		http.Error(w, "URL cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	shortURL := generateurl.GenerateShortURL()
+	urlMap[shortURL] = req.URL
+
+	fullShortURL := configs.ParseParts().BaseURL + "/" + shortURL
+
+	resp := ShortenResponse{Result: fullShortURL}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(resp)
 }
