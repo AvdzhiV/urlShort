@@ -1,22 +1,18 @@
 package storage
 
-import (
-	"bufio"
-	"encoding/json"
-	"errors"
-	"os"
-	"sync"
-
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-	"go.uber.org/zap"
-)
-
 type URLRecord struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+type Storage interface {
+	Get(shortURL string) (string, bool)
+	Put(shortURL string, originalURL string) error
+	Init() error
+}
+
+/*
 
 type Storage struct {
 	FilePath string
@@ -141,3 +137,4 @@ func (s *Storage) InitDB() error {
 func (s *Storage) DB() *sqlx.DB {
 	return s.db
 }
+*/

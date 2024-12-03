@@ -29,16 +29,39 @@ func main() {
 		logger.Fatal("Failed to parse configuration")
 	}
 
-	var db *sqlx.DB
-	if cfg.DatabaseDSN != "" {
-		db, err = sqlx.Connect("postgres", cfg.DatabaseDSN)
-		if err != nil {
-			logger.Fatal("Failed to connect to database", zap.Error(err))
-		}
-	} else {
-		logger.Fatal("No database configuration provided")
-	}
+	var store storage.Storage
 
+	if cfg.DatabaseDSN != "" {
+        db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+        if err != nil {
+            logger.Fatal("Failed to connect to the database", zap.Error(err))
+        } else {
+            logger.Info("Successfully connected to the database")
+        }
+        dbStore := storage.NewDBStorage(db)
+        if err := dbStore.Init(); err != nil {
+            logger.Fatal("Failed to initialize database", zap.Error(err))
+        } else {
+            logger.Info("Database initialized successfully")
+        }
+        store = dbStore
+    } else if cfg.FileStoragePath != "" {
+        fileStore := storage.NewFileStorage(cfg.FileStoragePath)
+        if err := fileStore.Init(); err != nil {
+            logger.Fatal("Failed to initialize file storage", zap.Error(err))
+        }
+        store = fileStore
+    } else {
+        logger.Warn("No storage configuration provided, using in-memory storage")
+        memStore := storage.NewMemoryStorage()
+        if err := memStore.Init(); err != nil {
+            logger.Fatal("Failed to initialize memory storage", zap.Error(err))
+        }
+        store = memStore
+    }
+
+
+/*
 	store := storage.NewStorage(cfg.FileStoragePath, db)
 	if db == nil {
 		if err := store.Load(); err != nil {
@@ -51,7 +74,7 @@ func main() {
 			logger.Info("Database initialized successfully")
 		}
 	}
-
+*/
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
 	r.Use(middleware.GzipMiddleware)
