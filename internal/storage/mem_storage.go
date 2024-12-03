@@ -30,3 +30,13 @@ func (s *MemoryStorage) Put(shortURL string, originalURL string) error {
     s.urlMap[shortURL] = originalURL
     return nil
 }
+
+func (s *MemoryStorage) PutBatch(records []BatchRecord) error {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+
+    for _, record := range records {
+        s.urlMap[record.ShortURL] = record.OriginalURL
+    }
+    return nil
+}

@@ -9,7 +9,14 @@ type URLRecord struct {
 type Storage interface {
 	Get(shortURL string) (string, bool)
 	Put(shortURL string, originalURL string) error
+	PutBatch(records []BatchRecord) error
 	Init() error
+}
+
+type BatchRecord struct {
+	UUID        string `db:"uuid"`
+	ShortURL    string `db:"short_url"`
+	OriginalURL string `db:"original_url"`
 }
 
 /*

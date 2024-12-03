@@ -85,6 +85,7 @@ func main() {
 	r.Get("/{shortURL}", handler.ShorterHandlerGet)
 	r.Post("/", handler.ShorterHandlerPost)
 	r.Post("/api/shorten", handler.ShorterHandlerAPI)
+	r.Post("/api/shorten/batch", handler.ShorterHandlerBatch)
 
 	if err := http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r); err != nil {
 		fmt.Println("Error")

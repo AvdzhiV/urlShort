@@ -93,3 +93,13 @@ func (s *FileStorage) save() error {
 	}
 	return nil
 }
+
+func (s *FileStorage) PutBatch(records []BatchRecord) error {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+
+    for _, record := range records {
+        s.urlMap[record.ShortURL] = record.OriginalURL
+    }
+    return s.save()
+}

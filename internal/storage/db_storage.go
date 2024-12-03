@@ -44,3 +44,30 @@ func (s *DBStorage) Put(shortURL string, originalURL string) error {
 	}
 	return nil
 }
+
+func (s *DBStorage) PutBatch(records []BatchRecord) error {
+	tx, err := s.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	//newUUID := uuid.New().String()
+	query := `INSERT INTO url_records (uuid, short_url, original_url) VALUES (:uuid, :short_url, :original_url) ON CONFLICT (short_url) DO NOTHING`
+	stmt, err := tx.PrepareNamed(query)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for i, record := range records {
+        records[i].UUID = uuid.New().String()
+
+		_, err := stmt.Exec(record)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
