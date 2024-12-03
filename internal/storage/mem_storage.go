@@ -3,16 +3,20 @@ package storage
 import (
 	"fmt"
 	"sync"
+
+	"go.uber.org/zap"
 )
 
 type MemoryStorage struct {
-	mu     sync.RWMutex
-	urlMap map[string]string
+	mu          sync.RWMutex
+	urlMap      map[string]string // short_url -> original_url
+	originalMap map[string]string // original_url -> short_url
 }
 
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
-		urlMap: make(map[string]string),
+		urlMap:      make(map[string]string),
+		originalMap: make(map[string]string),
 	}
 }
 
@@ -27,39 +31,44 @@ func (s *MemoryStorage) Get(shortURL string) (string, bool) {
 	return origURL, exists
 }
 
-func (s *MemoryStorage) Put(shortURL string, originalURL string) error {
+func (s *MemoryStorage) Put(shortURL string, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Проверяем, есть ли уже такой originalURL
-	for _, url := range s.urlMap {
-		if url == originalURL {
-			return fmt.Errorf("url_exists")
-		}
+	if existingShortURL, exists := s.originalMap[originalURL]; exists {
+		return existingShortURL, fmt.Errorf("url_exists")
 	}
 
 	s.urlMap[shortURL] = originalURL
-	return nil
+	s.originalMap[originalURL] = shortURL
+	return shortURL, nil
 }
 
-func (s *MemoryStorage) PutBatch(records []BatchRecord) error {
+func (s *MemoryStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	var shortURLs []string
+
 	for _, record := range records {
-		s.urlMap[record.ShortURL] = record.OriginalURL
+		if existingShortURL, exists := s.originalMap[record.OriginalURL]; exists {
+			shortURLs = append(shortURLs, existingShortURL)
+			zap.L().Info("URL already exists", zap.String("original_url", record.OriginalURL), zap.String("existing_short_url", existingShortURL))
+		} else {
+			s.urlMap[record.ShortURL] = record.OriginalURL
+			s.originalMap[record.OriginalURL] = record.ShortURL
+			shortURLs = append(shortURLs, record.ShortURL)
+			zap.L().Info("Inserting new URL", zap.String("short_url", record.ShortURL), zap.String("original_url", record.OriginalURL))
+		}
 	}
-	return nil
+
+	return shortURLs, nil
 }
 
 func (s *MemoryStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
-    s.mu.RLock()
-    defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-    for shortURL, url := range s.urlMap {
-        if url == originalURL {
-            return shortURL, true
-        }
-    }
-    return "", false
+	shortURL, exists := s.originalMap[originalURL]
+	return shortURL, exists
 }

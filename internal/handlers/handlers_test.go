@@ -75,7 +75,7 @@ func TestShorterHandlerGet(t *testing.T) {
 	// Добавляем тестовые данные в хранилище
 	shortURL := "safqwe"
 	originalURL := "http://example.com"
-	err := store.Put(shortURL, originalURL)
+	_, err := store.Put(shortURL, originalURL)
 	if err != nil {
 		t.Fatalf("Failed to put data in store: %v", err)
 	}

@@ -9,18 +9,21 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type FileStorage struct {
-	FilePath string
-	mu       sync.RWMutex
-	urlMap   map[string]string
+	FilePath    string
+	mu          sync.RWMutex
+	urlMap      map[string]string
+	originalMap map[string]string
 }
 
 func NewFileStorage(filePath string) *FileStorage {
 	return &FileStorage{
-		FilePath: filePath,
-		urlMap:   make(map[string]string),
+		FilePath:    filePath,
+		urlMap:      make(map[string]string),
+		originalMap: make(map[string]string),
 	}
 }
 
@@ -45,6 +48,7 @@ func (s *FileStorage) Init() error {
 			return err
 		}
 		s.urlMap[record.ShortURL] = record.OriginalURL
+		s.originalMap[record.OriginalURL] = record.ShortURL
 	}
 	if err := scanner.Err(); err != nil {
 		return err
@@ -59,67 +63,74 @@ func (s *FileStorage) Get(shortURL string) (string, bool) {
 	return origURL, exists
 }
 
-func (s *FileStorage) Put(shortURL string, originalURL string) error {
+func (s *FileStorage) Put(shortURL string, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, url := range s.urlMap {
-		if url == originalURL {
-			return fmt.Errorf("url_exists")
-		}
+	if existingShortURL, exists := s.originalMap[originalURL]; exists {
+		return existingShortURL, fmt.Errorf("url_exists")
 	}
 
 	s.urlMap[shortURL] = originalURL
-	return s.save()
+	s.originalMap[originalURL] = shortURL
+	return shortURL, s.save()
 }
 
 func (s *FileStorage) save() error {
-	file, err := os.Create(s.FilePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+    file, err := os.Create(s.FilePath)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
 
-	for shortURL, originalURL := range s.urlMap {
-		record := URLRecord{
-			UUID:        uuid.New().String(),
-			ShortURL:    shortURL,
-			OriginalURL: originalURL,
-		}
-		line, err := json.Marshal(record)
-		if err != nil {
-			return err
-		}
-		_, err = file.Write(line)
-		if err != nil {
-			return err
-		}
-		_, err = file.Write([]byte("\n"))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+    writer := bufio.NewWriter(file)
+    for shortURL, originalURL := range s.urlMap {
+        record := URLRecord{
+            UUID:        uuid.New().String(),
+            ShortURL:    shortURL,
+            OriginalURL: originalURL,
+        }
+        line, err := json.Marshal(record)
+        if err != nil {
+            return err
+        }
+        _, err = writer.Write(line)
+        if err != nil {
+            return err
+        }
+        _, err = writer.Write([]byte("\n"))
+        if err != nil {
+            return err
+        }
+    }
+    return writer.Flush()
 }
 
-func (s *FileStorage) PutBatch(records []BatchRecord) error {
+func (s *FileStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	var shortURLs []string
+
 	for _, record := range records {
-		s.urlMap[record.ShortURL] = record.OriginalURL
+		if existingShortURL, exists := s.originalMap[record.OriginalURL]; exists {
+			shortURLs = append(shortURLs, existingShortURL)
+			zap.L().Info("URL already exists", zap.String("original_url", record.OriginalURL), zap.String("existing_short_url", existingShortURL))
+		} else {
+			s.urlMap[record.ShortURL] = record.OriginalURL
+			s.originalMap[record.OriginalURL] = record.ShortURL
+			shortURLs = append(shortURLs, record.ShortURL)
+			zap.L().Info("Inserting new URL", zap.String("short_url", record.ShortURL), zap.String("original_url", record.OriginalURL))
+		}
 	}
-	return s.save()
+
+	return shortURLs, s.save()
 }
 
 func (s *FileStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for shortURL, url := range s.urlMap {
-		if url == originalURL {
-			return shortURL, true
-		}
-	}
-	return "", false
+	shortURL, exists := s.originalMap[originalURL]
+	return shortURL, exists
 }

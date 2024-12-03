@@ -9,7 +9,7 @@ import (
 	"github.com/AvdzhiV/urlShort/internal/generateurl"
 	"github.com/AvdzhiV/urlShort/internal/storage"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
@@ -37,31 +37,35 @@ func NewHandler(store storage.Storage, cfg *configs.Config) *Handler {
 func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		zap.L().Error("Failed to read request body", zap.Error(err))
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 	origURL := string(body)
 	if origURL == "" {
+		zap.L().Error("Request body is empty")
 		http.Error(w, "Request body is empty", http.StatusBadRequest)
 		return
 	}
-	shortURL := generateurl.GenerateShortURL()
 
-	err = h.Store.Put(shortURL, origURL)
+	shortURL := generateurl.GenerateShortURL()
+	existingShortURL, err := h.Store.Put(shortURL, origURL)
 	if err != nil {
 		if err.Error() == "url_exists" {
-            existingShortURL, _ := h.Store.GetShortURLByOriginalURL(origURL)
-            fullShortURL := h.Config.BaseURL + "/" + existingShortURL
-            w.Header().Set("Content-Type", "text/plain")
-            w.WriteHeader(http.StatusConflict)
-            w.Write([]byte(fullShortURL))
-            return
+			// Возвращаем существующий shortURL с статусом 409 Conflict
+			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(fullShortURL))
+			return
 		}
+		zap.L().Error("Failed to save URL", zap.Error(err))
 		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
 		return
 	}
 
-	fullShortURL := h.Config.BaseURL + "/" + shortURL
-
+	// Вставка успешна, возвращаем новый shortURL
+	fullShortURL := h.Config.BaseURL + "/" + existingShortURL
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fullShortURL))
@@ -87,35 +91,32 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ShortenRequest
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-
 	if req.URL == "" {
 		http.Error(w, "URL cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	shortURL := generateurl.GenerateShortURL()
-	err := h.Store.Put(shortURL, req.URL)
+	existingShortURL, err := h.Store.Put(shortURL, req.URL)
 	if err != nil {
 		if err.Error() == "url_exists" {
-			existingShortURL, _ := h.Store.GetShortURLByOriginalURL(req.URL)
-            fullShortURL := h.Config.BaseURL + "/" + existingShortURL
-            resp := ShortenResponse{Result: fullShortURL}
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(http.StatusConflict)
-            json.NewEncoder(w).Encode(resp)
-            return
+			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
+			resp := ShortenResponse{Result: fullShortURL}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(resp)
+			return
 		}
+		zap.L().Error("Failed to save URL", zap.Error(err))
 		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
 		return
 	}
 
-	fullShortURL := h.Config.BaseURL + "/" + shortURL
-
+	fullShortURL := h.Config.BaseURL + "/" + existingShortURL
 	resp := ShortenResponse{Result: fullShortURL}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -139,54 +140,76 @@ func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 	var reqItems []BatchRequestItem
 
-	// Читаем тело запроса
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqItems); err != nil {
+		zap.L().Error("Failed to decode request body", zap.Error(err))
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	if len(reqItems) == 0 {
+		zap.L().Error("Empty batch received")
 		http.Error(w, "Empty batch", http.StatusBadRequest)
 		return
 	}
 
-	// Обрабатываем каждый элемент
-	var respItems []BatchResponseItem
 	var records []storage.BatchRecord
-
 	for _, item := range reqItems {
 		if item.OriginalURL == "" || item.CorrelationID == "" {
+			zap.L().Error("Invalid request data",
+				zap.String("correlation_id", item.CorrelationID),
+				zap.String("original_url", item.OriginalURL))
 			http.Error(w, "Invalid request data", http.StatusBadRequest)
 			return
 		}
-		shortURL := generateurl.GenerateShortURL()
-		fullShortURL := h.Config.BaseURL + "/" + shortURL
-
-		respItems = append(respItems, BatchResponseItem{
-			CorrelationID: item.CorrelationID,
-			ShortURL:      fullShortURL,
-		})
 
 		records = append(records, storage.BatchRecord{
-			UUID:        uuid.New().String(),
-			ShortURL:    shortURL,
+			ShortURL:    generateurl.GenerateShortURL(),
 			OriginalURL: item.OriginalURL,
 		})
 	}
 
-	// Сохраняем в хранилище
-	err := h.Store.PutBatch(records)
+	// Вставка записей в хранилище
+	shortURLs, err := h.Store.PutBatch(records)
 	if err != nil {
+		if err.Error() == "url_exists" || err.Error() == "url_exists_but_not_found" {
+			// Возвращаем статус 409 Conflict с существующими short_urls
+			var conflictResponses []BatchResponseItem
+			for _, record := range records {
+				existingShortURL, exists := h.Store.GetShortURLByOriginalURL(record.OriginalURL)
+				if exists {
+					conflictResponses = append(conflictResponses, BatchResponseItem{
+						CorrelationID: "",
+						ShortURL:      h.Config.BaseURL + "/" + existingShortURL,
+					})
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(conflictResponses)
+			return
+		}
+		zap.L().Error("Failed to save batch records", zap.Error(err))
 		http.Error(w, "Failed to save URLs", http.StatusInternalServerError)
 		return
 	}
 
-	// Отправляем ответ
+	var respItems []BatchResponseItem
+	for i, item := range reqItems {
+		respItems = append(respItems, BatchResponseItem{
+			CorrelationID: item.CorrelationID,
+			ShortURL:      h.Config.BaseURL + "/" + shortURLs[i],
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(respItems); err != nil {
+		zap.L().Error("Failed to encode response", zap.Error(err))
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
+
+	zap.L().Info("Batch response sent successfully", zap.Int("count", len(respItems)))
 }
