@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -21,17 +20,16 @@ import (
 */
 
 func TestShorterHandlerPost(t *testing.T) {
-	// Создаем временный файл для хранилища
-	tmpFile, err := os.CreateTemp("", "storage_test_*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name()) // Удаляем файл после теста
-
 	cfg := &configs.Config{
 		BaseURL: "http://localhost:8080",
 	}
-	store := storage.NewStorage(tmpFile.Name())
+
+	// Используем MemoryStorage для тестирования
+	store := storage.NewMemoryStorage()
+	if err := store.Init(); err != nil {
+		t.Fatalf("Failed to initialize storage: %v", err)
+	}
+
 	handler := NewHandler(store, cfg)
 
 	reqBody := "http://example.com"
@@ -65,21 +63,19 @@ func TestShorterHandlerPost(t *testing.T) {
 }
 
 func TestShorterHandlerGet(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "storage_test_*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-
 	cfg := &configs.Config{
 		BaseURL: "http://localhost:8080",
 	}
-	store := storage.NewStorage(tmpFile.Name())
+
+	store := storage.NewMemoryStorage()
+	if err := store.Init(); err != nil {
+		t.Fatalf("Failed to initialize storage: %v", err)
+	}
 
 	// Добавляем тестовые данные в хранилище
 	shortURL := "safqwe"
 	originalURL := "http://example.com"
-	err = store.Put(shortURL, originalURL)
+	err := store.Put(shortURL, originalURL)
 	if err != nil {
 		t.Fatalf("Failed to put data in store: %v", err)
 	}
@@ -104,16 +100,15 @@ func TestShorterHandlerGet(t *testing.T) {
 }
 
 func TestShorterHandlerAPI(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "storage_test_*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-
 	cfg := &configs.Config{
 		BaseURL: "http://localhost:8080",
 	}
-	store := storage.NewStorage(tmpFile.Name())
+
+	store := storage.NewMemoryStorage()
+	if err := store.Init(); err != nil {
+		t.Fatalf("Failed to initialize storage: %v", err)
+	}
+
 	handler := NewHandler(store, cfg)
 
 	reqBody := `{"url":"https://practicum.yandex.ru"}`
