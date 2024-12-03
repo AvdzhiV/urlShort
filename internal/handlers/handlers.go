@@ -48,6 +48,14 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 
 	err = h.Store.Put(shortURL, origURL)
 	if err != nil {
+		if err.Error() == "url_exists" {
+            existingShortURL, _ := h.Store.GetShortURLByOriginalURL(origURL)
+            fullShortURL := h.Config.BaseURL + "/" + existingShortURL
+            w.Header().Set("Content-Type", "text/plain")
+            w.WriteHeader(http.StatusConflict)
+            w.Write([]byte(fullShortURL))
+            return
+		}
 		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
 		return
 	}
@@ -93,6 +101,15 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	shortURL := generateurl.GenerateShortURL()
 	err := h.Store.Put(shortURL, req.URL)
 	if err != nil {
+		if err.Error() == "url_exists" {
+			existingShortURL, _ := h.Store.GetShortURLByOriginalURL(req.URL)
+            fullShortURL := h.Config.BaseURL + "/" + existingShortURL
+            resp := ShortenResponse{Result: fullShortURL}
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusConflict)
+            json.NewEncoder(w).Encode(resp)
+            return
+		}
 		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
 		return
 	}

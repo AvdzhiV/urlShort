@@ -8,6 +8,7 @@ type URLRecord struct {
 
 type Storage interface {
 	Get(shortURL string) (string, bool)
+	GetShortURLByOriginalURL(originalURL string) (string, bool)
 	Put(shortURL string, originalURL string) error
 	PutBatch(records []BatchRecord) error
 	Init() error

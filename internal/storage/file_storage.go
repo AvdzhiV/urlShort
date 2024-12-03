@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 
@@ -61,6 +62,13 @@ func (s *FileStorage) Get(shortURL string) (string, bool) {
 func (s *FileStorage) Put(shortURL string, originalURL string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	for _, url := range s.urlMap {
+		if url == originalURL {
+			return fmt.Errorf("url_exists")
+		}
+	}
+
 	s.urlMap[shortURL] = originalURL
 	return s.save()
 }
@@ -95,11 +103,23 @@ func (s *FileStorage) save() error {
 }
 
 func (s *FileStorage) PutBatch(records []BatchRecord) error {
-    s.mu.Lock()
-    defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-    for _, record := range records {
-        s.urlMap[record.ShortURL] = record.OriginalURL
-    }
-    return s.save()
+	for _, record := range records {
+		s.urlMap[record.ShortURL] = record.OriginalURL
+	}
+	return s.save()
+}
+
+func (s *FileStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for shortURL, url := range s.urlMap {
+		if url == originalURL {
+			return shortURL, true
+		}
+	}
+	return "", false
 }
