@@ -10,6 +10,8 @@ import (
 	"github.com/AvdzhiV/urlShort/internal/middleware"
 	"github.com/AvdzhiV/urlShort/internal/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
@@ -27,9 +29,27 @@ func main() {
 		logger.Fatal("Failed to parse configuration")
 	}
 
-	store := storage.NewStorage(cfg.FileStoragePath)
-	if err := store.Load(); err != nil {
-		logger.Fatal("Failed to load storage", zap.Error(err))
+	var db *sqlx.DB
+	if cfg.DatabaseDSN != "" {
+		db, err = sqlx.Connect("postgres", cfg.DatabaseDSN)
+		if err != nil {
+			logger.Fatal("Failed to connect to database", zap.Error(err))
+		}
+	} else {
+		logger.Fatal("No database configuration provided")
+	}
+
+	store := storage.NewStorage(cfg.FileStoragePath, db)
+	if db == nil {
+		if err := store.Load(); err != nil {
+			logger.Fatal("Failed to load storage", zap.Error(err))
+		}
+	} else {
+		if err := store.InitDB(); err != nil {
+			logger.Fatal("Failed to initialize database", zap.Error(err))
+		} else {
+			logger.Info("Database initialized successfully")
+		}
 	}
 
 	r := chi.NewRouter()
@@ -38,10 +58,10 @@ func main() {
 
 	handler := handlers.NewHandler(store, cfg)
 
+	r.Get("/ping", handler.PingHandler)
 	r.Get("/{shortURL}", handler.ShorterHandlerGet)
 	r.Post("/", handler.ShorterHandlerPost)
 	r.Post("/api/shorten", handler.ShorterHandlerAPI)
-
 
 	if err := http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r); err != nil {
 		fmt.Println("Error")

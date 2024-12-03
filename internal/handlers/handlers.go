@@ -23,6 +23,20 @@ func NewHandler(store *storage.Storage, cfg *configs.Config) *Handler {
 	}
 }
 
+
+	func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
+		if h.Store.DB() == nil {
+			http.Error(w, "Database not configured", http.StatusInternalServerError)
+			return
+		}
+		err := h.Store.DB().Ping()
+		if err != nil {
+			http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+
 func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

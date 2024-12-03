@@ -12,6 +12,7 @@ var (
 	addressFlag         = flag.String("a", "localhost:8080", "Host for the server")
 	baseURLFlag         = flag.String("b", "http://localhost:8080", "Base URL for the short links")
 	fileStoragePathFlag = flag.String("f", "data.json", "Path to the file storage")
+	databaseDSNFlag     = flag.String("d", "", "DATABASE_DSN")
 )
 
 type Config struct {
@@ -19,6 +20,7 @@ type Config struct {
 	Port            int
 	BaseURL         string
 	FileStoragePath string
+	DatabaseDSN     string
 }
 
 func (a Config) String() string {
@@ -53,6 +55,12 @@ func ParseParts() *Config {
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = *baseURLFlag
 	}
+
+	databaseDSN := os.Getenv("DATABASE_DSN")
+	if databaseDSN == "" {
+		databaseDSN = *databaseDSNFlag
+	}
+	cfg.DatabaseDSN = databaseDSN
 
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
 	if fileStoragePath == "" {
