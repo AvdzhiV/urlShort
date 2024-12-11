@@ -37,7 +37,7 @@ func NewHandler(store storage.Storage, cfg *configs.Config) *Handler {
 func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		zap.L().Error("Failed to read request body", zap.Error(err))
+		//zap.L().Error("Failed to read request body", zap.Error(err))
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
@@ -59,6 +59,8 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fullShortURL))
 			return
 		}
+
+		//TODO Убрать данные из логов для безопасности 
 		zap.L().Error("Failed to save URL", zap.Error(err))
 		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
 		return

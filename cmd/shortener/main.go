@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -18,7 +18,7 @@ import (
 func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
-		fmt.Println("Error, ", err)
+		log.Println("Error, ", err)
 		return
 	}
 
@@ -29,52 +29,38 @@ func main() {
 		logger.Fatal("Failed to parse configuration")
 	}
 
+	//TODO Переместить логику в internal
 	var store storage.Storage
 
 	if cfg.DatabaseDSN != "" {
-        db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
-        if err != nil {
-            logger.Fatal("Failed to connect to the database", zap.Error(err))
-        } else {
-            logger.Info("Successfully connected to the database")
-        }
-        dbStore := storage.NewDBStorage(db)
-        if err := dbStore.Init(); err != nil {
-            logger.Fatal("Failed to initialize database", zap.Error(err))
-        } else {
-            logger.Info("Database initialized successfully")
-        }
-        store = dbStore
-    } else if cfg.FileStoragePath != "" {
-        fileStore := storage.NewFileStorage(cfg.FileStoragePath)
-        if err := fileStore.Init(); err != nil {
-            logger.Fatal("Failed to initialize file storage", zap.Error(err))
-        }
-        store = fileStore
-    } else {
-        logger.Warn("No storage configuration provided, using in-memory storage")
-        memStore := storage.NewMemoryStorage()
-        if err := memStore.Init(); err != nil {
-            logger.Fatal("Failed to initialize memory storage", zap.Error(err))
-        }
-        store = memStore
-    }
-
-
-/*
-	store := storage.NewStorage(cfg.FileStoragePath, db)
-	if db == nil {
-		if err := store.Load(); err != nil {
-			logger.Fatal("Failed to load storage", zap.Error(err))
+		db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+		if err != nil {
+			logger.Fatal("Failed to connect to the database", zap.Error(err))
+		} else {
+			logger.Info("Successfully connected to the database")
 		}
-	} else {
-		if err := store.InitDB(); err != nil {
+		dbStore := storage.NewDBStorage(db)
+		if err := dbStore.Init(); err != nil {
 			logger.Fatal("Failed to initialize database", zap.Error(err))
 		} else {
 			logger.Info("Database initialized successfully")
 		}
+		store = dbStore
+	} else if cfg.FileStoragePath != "" {
+		fileStore := storage.NewFileStorage(cfg.FileStoragePath)
+		if err := fileStore.Init(); err != nil {
+			logger.Fatal("Failed to initialize file storage", zap.Error(err))
+		}
+		store = fileStore
+	} else {
+		logger.Warn("No storage configuration provided, using in-memory storage")
+		memStore := storage.NewMemoryStorage()
+		if err := memStore.Init(); err != nil {
+			logger.Fatal("Failed to initialize memory storage", zap.Error(err))
+		}
+		store = memStore
 	}
-*/
+
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
 	r.Use(middleware.GzipMiddleware)
@@ -88,15 +74,6 @@ func main() {
 	r.Post("/api/shorten/batch", handler.ShorterHandlerBatch)
 
 	if err := http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r); err != nil {
-		fmt.Println("Error")
+		logger.Error("Error", zap.Error(err))
 	}
 }
-
-/*
-	Задание по треку «Сервис сокращения URL»
-	Добавьте поддержку gzip в ваш сервис. Научите его:
-	Принимать запросы в сжатом формате (с HTTP-заголовком Content-Encoding).
-	Отдавать сжатый ответ клиенту, который поддерживает обработку сжатых ответов (с HTTP-заголовком Accept-Encoding).
-	Функция сжатия должна работать для контента с типами application/json и text/html.
-	Вспомните middleware из урока про HTTP-сервер, это может вам помочь.
-*/

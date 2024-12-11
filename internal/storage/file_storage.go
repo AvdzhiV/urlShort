@@ -11,17 +11,17 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
-
+//TODO Использовать Mutex вместо RWMutex
 type FileStorage struct {
-	FilePath    string
-	mu          sync.RWMutex
+	filePath    string
+	mu          *sync.RWMutex
 	urlMap      map[string]string
 	originalMap map[string]string
 }
 
 func NewFileStorage(filePath string) *FileStorage {
 	return &FileStorage{
-		FilePath:    filePath,
+		filePath:    filePath,
 		urlMap:      make(map[string]string),
 		originalMap: make(map[string]string),
 	}
@@ -31,7 +31,7 @@ func (s *FileStorage) Init() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	file, err := os.Open(s.FilePath)
+	file, err := os.Open(s.filePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -77,7 +77,7 @@ func (s *FileStorage) Put(shortURL string, originalURL string) (string, error) {
 }
 
 func (s *FileStorage) save() error {
-    file, err := os.Create(s.FilePath)
+    file, err := os.Create(s.filePath)
     if err != nil {
         return err
     }

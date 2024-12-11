@@ -10,7 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
-
+//TODO Использовать миграции для создания схемы БД, Исправить батчинг `prepared statement`
+//TODO Убрать логирование ошбики при проброссе наверх tx.Rollback() или убрать проброс tx.Rollback()
 type DBStorage struct {
 	DB *sqlx.DB
 }
