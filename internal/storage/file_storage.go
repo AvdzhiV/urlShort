@@ -14,7 +14,7 @@ import (
 //TODO Использовать Mutex вместо RWMutex
 type FileStorage struct {
 	filePath    string
-	mu          *sync.RWMutex
+	mu          sync.RWMutex
 	urlMap      map[string]string
 	originalMap map[string]string
 }
