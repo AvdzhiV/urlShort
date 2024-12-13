@@ -10,7 +10,6 @@ import (
 	"github.com/AvdzhiV/urlShort/internal/middleware"
 	"github.com/AvdzhiV/urlShort/internal/storage"
 	"github.com/go-chi/chi/v5"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
@@ -30,35 +29,10 @@ func main() {
 	}
 
 	//TODO Переместить логику в internal
-	var store storage.Storage
 
-	if cfg.DatabaseDSN != "" {
-		db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
-		if err != nil {
-			logger.Fatal("Failed to connect to the database", zap.Error(err))
-		} else {
-			logger.Info("Successfully connected to the database")
-		}
-		dbStore := storage.NewDBStorage(db)
-		if err := dbStore.Init(); err != nil {
-			logger.Fatal("Failed to initialize database", zap.Error(err))
-		} else {
-			logger.Info("Database initialized successfully")
-		}
-		store = dbStore
-	} else if cfg.FileStoragePath != "" {
-		fileStore := storage.NewFileStorage(cfg.FileStoragePath)
-		if err := fileStore.Init(); err != nil {
-			logger.Fatal("Failed to initialize file storage", zap.Error(err))
-		}
-		store = fileStore
-	} else {
-		logger.Warn("No storage configuration provided, using in-memory storage")
-		memStore := storage.NewMemoryStorage()
-		if err := memStore.Init(); err != nil {
-			logger.Fatal("Failed to initialize memory storage", zap.Error(err))
-		}
-		store = memStore
+	store, err := storage.StoreInit(*cfg, logger)
+	if err != nil {
+		logger.Fatal("Failed to initialize storage: ", zap.Error(err))
 	}
 
 	r := chi.NewRouter()

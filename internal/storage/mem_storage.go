@@ -27,15 +27,15 @@ func (s *MemoryStorage) Init() error {
 func (s *MemoryStorage) Get(shortURL string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	origURL, exists := s.urlMap[shortURL]
-	return origURL, exists
+	origURL, ok := s.urlMap[shortURL]
+	return origURL, ok
 }
 
 func (s *MemoryStorage) Put(shortURL string, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if existingShortURL, exists := s.originalMap[originalURL]; exists {
+	if existingShortURL, ok := s.originalMap[originalURL]; ok {
 		return existingShortURL, fmt.Errorf("url_exists")
 	}
 
@@ -51,7 +51,7 @@ func (s *MemoryStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	var shortURLs []string
 
 	for _, record := range records {
-		if existingShortURL, exists := s.originalMap[record.OriginalURL]; exists {
+		if existingShortURL, ok := s.originalMap[record.OriginalURL]; ok {
 			shortURLs = append(shortURLs, existingShortURL)
 			zap.L().Info("URL already exists", zap.String("original_url", record.OriginalURL), zap.String("existing_short_url", existingShortURL))
 		} else {
@@ -69,6 +69,6 @@ func (s *MemoryStorage) GetShortURLByOriginalURL(originalURL string) (string, bo
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	shortURL, exists := s.originalMap[originalURL]
-	return shortURL, exists
+	shortURL, ok := s.originalMap[originalURL]
+	return shortURL, ok
 }

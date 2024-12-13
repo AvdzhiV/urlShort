@@ -37,13 +37,11 @@ func NewHandler(store storage.Storage, cfg *configs.Config) *Handler {
 func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		//zap.L().Error("Failed to read request body", zap.Error(err))
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
 	origURL := string(body)
 	if origURL == "" {
-		zap.L().Error("Request body is empty")
 		http.Error(w, "Request body is empty", http.StatusBadRequest)
 		return
 	}
@@ -60,9 +58,8 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//TODO Убрать данные из логов для безопасности 
-		zap.L().Error("Failed to save URL", zap.Error(err))
-		http.Error(w, "Failed to save URL", http.StatusInternalServerError)
+		zap.L().Error("Failed to save URL")
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -76,8 +73,8 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
 
-	origURL, exists := h.Store.Get(shortURL)
-	if !exists {
+	origURL, ok := h.Store.Get(shortURL)
+	if !ok {
 		http.Error(w, "URL not found", http.StatusNotFound)
 		return
 	}
@@ -178,8 +175,8 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 			// Возвращаем статус 409 Conflict с существующими short_urls
 			var conflictResponses []BatchResponseItem
 			for _, record := range records {
-				existingShortURL, exists := h.Store.GetShortURLByOriginalURL(record.OriginalURL)
-				if exists {
+				existingShortURL, ok := h.Store.GetShortURLByOriginalURL(record.OriginalURL)
+				if ok {
 					conflictResponses = append(conflictResponses, BatchResponseItem{
 						CorrelationID: "",
 						ShortURL:      h.Config.BaseURL + "/" + existingShortURL,

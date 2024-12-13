@@ -57,8 +57,8 @@ func (s *DBStorage) Put(shortURL string, originalURL string) (string, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			existingShortURL, exists := s.GetShortURLByOriginalURL(originalURL)
-			if !exists {
+			existingShortURL, ok := s.GetShortURLByOriginalURL(originalURL)
+			if !ok {
 				zap.L().Error("URL exists but cannot retrieve short URL", zap.String("original_url", originalURL))
 				return "", fmt.Errorf("url_exists_but_not_found")
 			}
@@ -67,8 +67,8 @@ func (s *DBStorage) Put(shortURL string, originalURL string) (string, error) {
 
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == pgerrcode.UniqueViolation && pgErr.ConstraintName == "original_url_unique" {
-				existingShortURL, exists := s.GetShortURLByOriginalURL(originalURL)
-				if !exists {
+				existingShortURL, ok := s.GetShortURLByOriginalURL(originalURL)
+				if !ok {
 					zap.L().Error("URL exists but cannot retrieve short URL", zap.String("original_url", originalURL))
 					return "", fmt.Errorf("url_exists_but_not_found")
 				}
@@ -118,8 +118,8 @@ func (s *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
         if err != nil {
             if err == sql.ErrNoRows {
                 // Конфликт возник, нужно получить существующий short_url
-                existingShortURL, exists := s.GetShortURLByOriginalURL(record.OriginalURL)
-                if !exists {
+                existingShortURL, ok := s.GetShortURLByOriginalURL(record.OriginalURL)
+                if !ok {
                     tx.Rollback()
                     zap.L().Error("URL exists but cannot retrieve short URL", zap.String("original_url", record.OriginalURL))
                     return nil, fmt.Errorf("url_exists_but_not_found")

@@ -53,8 +53,8 @@ func TestShorterHandlerPost(t *testing.T) {
 	}
 
 	shortURL := strings.TrimPrefix(responseBody, expectedPrefix)
-	originalURL, exists := store.Get(shortURL)
-	if !exists {
+	originalURL, ok := store.Get(shortURL)
+	if !ok {
 		t.Errorf("short URL not found in storage")
 	}
 	if originalURL != reqBody {
@@ -137,8 +137,8 @@ func TestShorterHandlerAPI(t *testing.T) {
 	}
 
 	shortURL := strings.TrimPrefix(resp["result"], expectedPrefix)
-	originalURL, exists := store.Get(shortURL)
-	if !exists {
+	originalURL, ok := store.Get(shortURL)
+	if !ok {
 		t.Errorf("short URL not found in storage")
 	}
 	if originalURL != "https://practicum.yandex.ru" {

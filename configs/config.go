@@ -43,7 +43,7 @@ func (a *Config) Set(s string) error {
 
 func ParseParts() *Config {
 	flag.Parse()
-	var exist bool
+	var ok bool
 	cfg := &Config{}
 
 	serverAddress := os.Getenv("SERVER_ADDRESS")
@@ -51,8 +51,8 @@ func ParseParts() *Config {
 		serverAddress = *addressFlag
 	}
 
-	cfg.BaseURL, exist = os.LookupEnv("BASE_URL")
-	if !exist {
+	cfg.BaseURL, ok = os.LookupEnv("BASE_URL")
+	if !ok {
 		cfg.BaseURL = *baseURLFlag
 	}
 
