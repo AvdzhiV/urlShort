@@ -98,7 +98,6 @@ func (s *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
     stmt, err := tx.PrepareNamed(query)
     if err != nil {
         tx.Rollback()
-        zap.L().Error("Failed to prepare statement", zap.Error(err))
         return nil, err
     }
     defer stmt.Close()

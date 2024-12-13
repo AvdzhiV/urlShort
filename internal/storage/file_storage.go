@@ -11,10 +11,11 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
-//TODO Использовать Mutex вместо RWMutex
+
+// TODO Использовать Mutex вместо RWMutex
 type FileStorage struct {
 	filePath    string
-	mu          sync.RWMutex
+	mu          *sync.Mutex
 	urlMap      map[string]string
 	originalMap map[string]string
 }
@@ -24,6 +25,7 @@ func NewFileStorage(filePath string) *FileStorage {
 		filePath:    filePath,
 		urlMap:      make(map[string]string),
 		originalMap: make(map[string]string),
+		mu:          &sync.Mutex{},
 	}
 }
 
@@ -57,8 +59,8 @@ func (s *FileStorage) Init() error {
 }
 
 func (s *FileStorage) Get(shortURL string) (string, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	origURL, ok := s.urlMap[shortURL]
 	return origURL, ok
 }
@@ -77,33 +79,33 @@ func (s *FileStorage) Put(shortURL string, originalURL string) (string, error) {
 }
 
 func (s *FileStorage) save() error {
-    file, err := os.Create(s.filePath)
-    if err != nil {
-        return err
-    }
-    defer file.Close()
+	file, err := os.Create(s.filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-    writer := bufio.NewWriter(file)
-    for shortURL, originalURL := range s.urlMap {
-        record := URLRecord{
-            UUID:        uuid.New().String(),
-            ShortURL:    shortURL,
-            OriginalURL: originalURL,
-        }
-        line, err := json.Marshal(record)
-        if err != nil {
-            return err
-        }
-        _, err = writer.Write(line)
-        if err != nil {
-            return err
-        }
-        _, err = writer.Write([]byte("\n"))
-        if err != nil {
-            return err
-        }
-    }
-    return writer.Flush()
+	writer := bufio.NewWriter(file)
+	for shortURL, originalURL := range s.urlMap {
+		record := URLRecord{
+			UUID:        uuid.New().String(),
+			ShortURL:    shortURL,
+			OriginalURL: originalURL,
+		}
+		line, err := json.Marshal(record)
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write(line)
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
 }
 
 func (s *FileStorage) PutBatch(records []BatchRecord) ([]string, error) {
@@ -128,8 +130,8 @@ func (s *FileStorage) PutBatch(records []BatchRecord) ([]string, error) {
 }
 
 func (s *FileStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	shortURL, ok := s.originalMap[originalURL]
 	return shortURL, ok

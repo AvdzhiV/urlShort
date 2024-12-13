@@ -28,8 +28,6 @@ func main() {
 		logger.Fatal("Failed to parse configuration")
 	}
 
-	//TODO Переместить логику в internal
-
 	store, err := storage.StoreInit(*cfg, logger)
 	if err != nil {
 		logger.Fatal("Failed to initialize storage: ", zap.Error(err))
