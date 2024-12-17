@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 //TODO Использовать миграции для создания схемы БД, Исправить батчинг `prepared statement`
-//TODO Убрать логирование ошбики при проброссе наверх tx.Rollback() или убрать проброс tx.Rollback()
 type DBStorage struct {
 	DB *sqlx.DB
 }
@@ -37,7 +36,8 @@ func (s *DBStorage) Init() error {
 
 func (s *DBStorage) Get(shortURL string) (string, bool) {
 	var originalURL string
-	err := s.DB.Get(&originalURL, "SELECT original_url FROM url_records WHERE short_url=$1", shortURL)
+	err := s.DB.Get(&originalURL, "SELECT original_url FROM url_records WHERE short_url=$1",
+     shortURL)
 	if err != nil {
 		return "", false
 	}
