@@ -122,11 +122,10 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// Обновление PingHandler для проверки базы данных
+
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 	if dbStorage, ok := h.Store.(*storage.DBStorage); ok {
-		err := dbStorage.DB.Ping()
-		if err != nil {
+		if err := dbStorage.Pool.Ping(r.Context()); err != nil {
 			http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
 			return
 		}
@@ -135,7 +134,6 @@ func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Database not configured", http.StatusInternalServerError)
 	}
 }
-
 func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 	var reqItems []BatchRequestItem
 

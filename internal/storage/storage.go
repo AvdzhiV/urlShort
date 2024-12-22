@@ -5,7 +5,6 @@ import (
 
 	"github.com/AvdzhiV/urlShort/configs"
 
-	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +19,7 @@ type Storage interface {
 	GetShortURLByOriginalURL(originalURL string) (string, bool)
 	Put(shortURL string, originalURL string) (string, error)
 	PutBatch(records []BatchRecord) ([]string, error)
-	Init() error
+	//Init() error
 }
 
 type BatchRecord struct {
@@ -31,15 +30,9 @@ type BatchRecord struct {
 
 func StoreInit(cfg configs.Config, logger *zap.Logger) (Storage, error) {
 	if cfg.DatabaseDSN != "" {
-		db, err := sqlx.Connect("postgres", cfg.DatabaseDSN)
+		dbStore, err := NewDBStorage(cfg.DatabaseDSN)
 		if err != nil {
-			return nil, fmt.Errorf("failed to connect to the database: %w", err)
-		}
-		logger.Info("Successfully connected to the database")
-
-		dbStore := NewDBStorage(db)
-		if err := dbStore.Init(); err != nil {
-			return nil, fmt.Errorf("failed to initialize database: %w", err)
+			return nil, fmt.Errorf("failed to connect/init db with migrations: %w", err)
 		}
 		logger.Info("Database initialized successfully")
 		return dbStore, nil
