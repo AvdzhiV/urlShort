@@ -96,7 +96,7 @@ func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
 
 func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	inserted := make([]string, 0, len(records))
-	
+
 	tx, err := dbs.Pool.Begin(context.Background())
 	if err != nil {
 	 log.Fatalf("Unable to start transaction: %v\n", err)
@@ -122,6 +122,6 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
    
 	return inserted, nil
    }
-func (db *DBStorage) Close() {
-	db.Pool.Close()
+func (dbs *DBStorage) Close() {
+	dbs.Pool.Close()
 }
