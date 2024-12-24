@@ -120,6 +120,13 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 			record.ShortURL, record.OriginalURL,
 		)
 		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				_ , ok := dbs.GetShortURLByOriginalURL(record.OriginalURL)
+				if !ok {
+					return nil, ErrURLExists
+				}
+				return nil, ErrURLExists
+			}
 			return inserted, fmt.Errorf("error executing query: %v", err)
 		}
 		inserted = append(inserted, record.ShortURL)
