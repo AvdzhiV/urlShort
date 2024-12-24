@@ -11,8 +11,11 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var ErrURLExists = errors.New("original_url already exists")
 
 // TODO Использовать миграции для создания схемы БД, Исправить батчинг `prepared statement`
 
@@ -82,14 +85,20 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(originalURL string) (string, bool
 }
 
 func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
-	// Сгенерим uuid сами или используем что-то ещё
 	// Вставим запись
-	_, err := dbs.Pool.Exec(context.Background(),
-		"INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2)",
+	err := dbs.Pool.QueryRow(context.Background(),
+		"INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2) ON CONFLICT (original_url) DO NOTHING RETURNING short_url",
 		shortURL, originalURL,
-	)
+	).Scan(&shortURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to insert record: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			existingShortURL, exists := dbs.GetShortURLByOriginalURL(originalURL)
+			if !exists {
+				return "", ErrURLExists
+			}
+			return existingShortURL, ErrURLExists
+		}
+		return "", err
 	}
 	return shortURL, nil
 }
@@ -99,29 +108,27 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 
 	tx, err := dbs.Pool.Begin(context.Background())
 	if err != nil {
-	 log.Fatalf("Unable to start transaction: %v\n", err)
+		log.Fatalf("Unable to start transaction: %v\n", err)
 	}
 	defer tx.Rollback(context.Background()) // Откат транзакции в случае ошибки
-   
+
 	// Выполнение batch-запросов
 	for _, record := range records {
-	 _, err := tx.Exec(
-	  context.Background(),
-	  "INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2)",
-	  record.ShortURL, record.OriginalURL,
-	 )
-	 if err != nil {
-	  return inserted, fmt.Errorf("error executing query: %v", err)
-	 }
-	 inserted = append(inserted, record.ShortURL)
+		_, err := tx.Exec(
+			context.Background(),
+			"INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2)",
+			record.ShortURL, record.OriginalURL,
+		)
+		if err != nil {
+			return inserted, fmt.Errorf("error executing query: %v", err)
+		}
+		inserted = append(inserted, record.ShortURL)
 	}
-   
 	if err := tx.Commit(context.Background()); err != nil {
-	 return inserted, fmt.Errorf("error committing transaction: %v", err)
+		return inserted, fmt.Errorf("error committing transaction: %v", err)
 	}
-   
 	return inserted, nil
-   }
+}
 func (dbs *DBStorage) Close() {
 	dbs.Pool.Close()
 }

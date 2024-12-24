@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -49,7 +50,7 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	shortURL := generateurl.GenerateShortURL()
 	existingShortURL, err := h.Store.Put(shortURL, origURL)
 	if err != nil {
-		if err.Error() == "url_exists" {
+		if errors.Is(err, storage.ErrURLExists) {
 			// Возвращаем существующий shortURL с статусом 409 Conflict
 			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
 			w.Header().Set("Content-Type", "text/plain")
@@ -102,7 +103,7 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	shortURL := generateurl.GenerateShortURL()
 	existingShortURL, err := h.Store.Put(shortURL, req.URL)
 	if err != nil {
-		if err.Error() == "url_exists" {
+		if errors.Is(err, storage.ErrURLExists) {
 			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
 			resp := ShortenResponse{Result: fullShortURL}
 			w.Header().Set("Content-Type", "application/json")
@@ -121,7 +122,6 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(resp)
 }
-
 
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 	if dbStorage, ok := h.Store.(*storage.DBStorage); ok {
