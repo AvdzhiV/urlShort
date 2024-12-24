@@ -40,7 +40,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-//обертка для GZIP-сжатия
+// обертка для GZIP-сжатия
 type gzipResponseWriter struct {
 	http.ResponseWriter
 	Writer io.Writer

@@ -121,7 +121,7 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 		)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				_ , ok := dbs.GetShortURLByOriginalURL(record.OriginalURL)
+				_, ok := dbs.GetShortURLByOriginalURL(record.OriginalURL)
 				if !ok {
 					return nil, ErrURLExists
 				}

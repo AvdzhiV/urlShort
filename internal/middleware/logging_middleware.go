@@ -6,6 +6,7 @@ import (
 
 	"go.uber.org/zap"
 )
+
 type ResponseWriterWrapper struct {
 	http.ResponseWriter
 	status int
