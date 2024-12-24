@@ -13,6 +13,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	HeaderContentType = "Content-Type"
+	TextPlain         = "text/plain"
+	ApplicationJSON   = "application/json"
+)
+
 type Handler struct {
 	Store  storage.Storage
 	Config *configs.Config
@@ -53,9 +59,12 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, storage.ErrURLExists) {
 			// Возвращаем существующий shortURL с статусом 409 Conflict
 			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
-			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set(HeaderContentType, TextPlain)
 			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(fullShortURL))
+			if _, err := w.Write([]byte(fullShortURL)); err != nil {
+				zap.L().Error("failed to write response", zap.Error(err))
+				return
+			}
 			return
 		}
 
@@ -66,9 +75,12 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 
 	// Вставка успешна, возвращаем новый shortURL
 	fullShortURL := h.Config.BaseURL + "/" + existingShortURL
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set(HeaderContentType, TextPlain)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fullShortURL))
+	if _, err := w.Write([]byte(fullShortURL)); err != nil {
+		zap.L().Error("failed to write response", zap.Error(err))
+		return
+	}
 }
 
 func (h *Handler) ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
@@ -106,9 +118,12 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, storage.ErrURLExists) {
 			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
 			resp := ShortenResponse{Result: fullShortURL}
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set(HeaderContentType, ApplicationJSON)
 			w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(resp)
+			if err := json.NewEncoder(w).Encode(resp); err != nil {
+				zap.L().Error("Failed to encode JSON response", zap.Error(err))
+				return
+			}
 			return
 		}
 		zap.L().Error("Failed to save URL", zap.Error(err))
@@ -118,9 +133,12 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 
 	fullShortURL := h.Config.BaseURL + "/" + existingShortURL
 	resp := ShortenResponse{Result: fullShortURL}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(HeaderContentType, ApplicationJSON)
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		zap.L().Error("Failed to encode JSON response", zap.Error(err))
+		return
+	}
 }
 
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
@@ -181,10 +199,12 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 					})
 				}
 			}
-
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set(HeaderContentType, ApplicationJSON)
 			w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(conflictResponses)
+			if err := json.NewEncoder(w).Encode(conflictResponses); err != nil {
+				zap.L().Error("Failed to encode JSON response", zap.Error(err))
+				return
+			}
 			return
 		}
 		zap.L().Error("Failed to save batch records", zap.Error(err))
@@ -200,7 +220,7 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(HeaderContentType, ApplicationJSON)
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(respItems); err != nil {
 		zap.L().Error("Failed to encode response", zap.Error(err))

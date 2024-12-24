@@ -3,6 +3,7 @@ package configs
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -17,10 +18,10 @@ var (
 
 type Config struct {
 	Host            string
-	Port            int
 	BaseURL         string
 	FileStoragePath string
 	DatabaseDSN     string
+	Port            int
 }
 
 func (a Config) String() string {
@@ -34,7 +35,7 @@ func (a *Config) Set(s string) error {
 	}
 	port, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot parse port: %w", err)
 	}
 	a.Host = parts[0]
 	a.Port = port

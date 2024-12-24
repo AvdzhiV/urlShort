@@ -21,8 +21,12 @@ func main() {
 		log.Println("Error, ", err)
 		return
 	}
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			log.Println("Error, ", err)
+		}
+	}()
 
-	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 	cfg := configs.ParseParts()
 	if cfg == nil {
