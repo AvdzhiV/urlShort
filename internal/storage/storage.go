@@ -19,7 +19,6 @@ type Storage interface {
 	GetShortURLByOriginalURL(originalURL string) (string, bool)
 	Put(shortURL string, originalURL string) (string, error)
 	PutBatch(records []BatchRecord) ([]string, error)
-	//Init() error
 }
 
 type BatchRecord struct {

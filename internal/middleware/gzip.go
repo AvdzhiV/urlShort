@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // GzipMiddleware добавляет поддержку GZIP-сжатия.
@@ -17,7 +20,12 @@ func GzipMiddleware(next http.Handler) http.Handler {
 				http.Error(w, "Failed to decompress request body", http.StatusBadRequest)
 				return
 			}
-			defer reader.Close()
+			defer func() {
+				err := reader.Close()
+				if err != nil {
+					zap.L().Error("Failed to close gzip reader", zap.Error(err))
+				}
+			}()
 			r.Body = io.NopCloser(reader)
 		}
 
@@ -30,8 +38,12 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		// ответ будет сжат
 		w.Header().Set("Content-Encoding", "gzip")
 		gzipWriter := gzip.NewWriter(w)
-		defer gzipWriter.Close()
-
+		defer func() {
+			err := gzipWriter.Close()
+			if err != nil {
+				zap.L().Error("Failed to close gzip writer", zap.Error(err))
+			}
+		}()
 		wrappedWriter := &gzipResponseWriter{
 			ResponseWriter: w,
 			Writer:         gzipWriter,
@@ -40,14 +52,18 @@ func GzipMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// обертка для GZIP-сжатия
+// обертка для GZIP-сжатия.
 type gzipResponseWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
 }
 
 func (w *gzipResponseWriter) Write(data []byte) (int, error) {
-	return w.Writer.Write(data)
+	n, err := w.Writer.Write(data)
+	if err != nil {
+		return n, fmt.Errorf("gzipResponseWriter write error: %w", err)
+	}
+	return n, nil
 }
 
 func (w *gzipResponseWriter) WriteHeader(statusCode int) {

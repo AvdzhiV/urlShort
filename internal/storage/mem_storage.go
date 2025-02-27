@@ -1,16 +1,16 @@
 package storage
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 
 	"go.uber.org/zap"
 )
 
 type MemoryStorage struct {
-	mu          sync.RWMutex
 	urlMap      map[string]string // short_url -> original_url
 	originalMap map[string]string // original_url -> short_url
+	mu          sync.RWMutex
 }
 
 func NewMemoryStorage() *MemoryStorage {
@@ -36,7 +36,7 @@ func (s *MemoryStorage) Put(shortURL string, originalURL string) (string, error)
 	defer s.mu.Unlock()
 
 	if existingShortURL, ok := s.originalMap[originalURL]; ok {
-		return existingShortURL, fmt.Errorf("url_exists")
+		return existingShortURL, errors.New("url_exists")
 	}
 
 	s.urlMap[shortURL] = originalURL
@@ -53,12 +53,14 @@ func (s *MemoryStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	for _, record := range records {
 		if existingShortURL, ok := s.originalMap[record.OriginalURL]; ok {
 			shortURLs = append(shortURLs, existingShortURL)
-			zap.L().Info("URL already exists", zap.String("original_url", record.OriginalURL), zap.String("existing_short_url", existingShortURL))
+			zap.L().Info("URL already exists", zap.String(OriginalURLKey, record.OriginalURL),
+				zap.String("existing_short_url", existingShortURL))
 		} else {
 			s.urlMap[record.ShortURL] = record.OriginalURL
 			s.originalMap[record.OriginalURL] = record.ShortURL
 			shortURLs = append(shortURLs, record.ShortURL)
-			zap.L().Info("Inserting new URL", zap.String("short_url", record.ShortURL), zap.String("original_url", record.OriginalURL))
+			zap.L().Info("Inserting new URL", zap.String("short_url", record.ShortURL),
+				zap.String(OriginalURLKey, record.OriginalURL))
 		}
 	}
 

@@ -168,7 +168,7 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var records []storage.BatchRecord
+	records := make([]storage.BatchRecord, len(reqItems), cap(reqItems))
 	for _, item := range reqItems {
 		if item.OriginalURL == "" || item.CorrelationID == "" {
 			zap.L().Error("Invalid request data",
@@ -212,7 +212,7 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var respItems []BatchResponseItem
+	respItems := make([]BatchResponseItem, len(reqItems), cap(reqItems))
 	for i, item := range reqItems {
 		respItems = append(respItems, BatchResponseItem{
 			CorrelationID: item.CorrelationID,

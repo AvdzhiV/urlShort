@@ -13,12 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-/*
-
-Изменить тесты для обработчиков
-
-*/
-
 func TestShorterHandlerPost(t *testing.T) {
 	cfg := &configs.Config{
 		BaseURL: "http://localhost:8080",
@@ -82,7 +76,7 @@ func TestShorterHandlerGet(t *testing.T) {
 
 	handler := NewHandler(store, cfg)
 
-	req := httptest.NewRequest(http.MethodGet, "/"+shortURL, nil)
+	req := httptest.NewRequest(http.MethodGet, "/"+shortURL, http.NoBody)
 	rr := httptest.NewRecorder()
 
 	r := chi.NewRouter()

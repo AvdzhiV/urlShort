@@ -17,7 +17,7 @@ import (
 
 var ErrURLExists = errors.New("original_url already exists")
 
-// TODO Использовать миграции для создания схемы БД, Исправить батчинг `prepared statement`
+// TODO Использовать миграции для создания схемы БД, Исправить батчинг `prepared statement.
 
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
@@ -43,7 +43,7 @@ func runMigrations(dsn string) error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
 		log.Fatal(err)
-		return err
+		return fmt.Errorf("не удалось создать новый драйвер iofs: %w", err)
 	}
 
 	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
@@ -85,11 +85,14 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(originalURL string) (string, bool
 }
 
 func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
+	query := `
+		INSERT INTO url_records (uuid, short_url, original_url)
+		VALUES (gen_random_uuid(), $1, $2)
+		ON CONFLICT (original_url)
+		DO NOTHING RETURNING short_url
+	`
 	// Вставим запись
-	err := dbs.Pool.QueryRow(context.Background(),
-		"INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2) ON CONFLICT (original_url) DO NOTHING RETURNING short_url",
-		shortURL, originalURL,
-	).Scan(&shortURL)
+	err := dbs.Pool.QueryRow(context.Background(), query, shortURL, originalURL).Scan(&shortURL)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			existingShortURL, exists := dbs.GetShortURLByOriginalURL(originalURL)
@@ -98,7 +101,7 @@ func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
 			}
 			return existingShortURL, ErrURLExists
 		}
-		return "", err
+		return "", fmt.Errorf("ошибка при выполнении запроса: %w", err)
 	}
 	return shortURL, nil
 }
@@ -110,8 +113,11 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	if err != nil {
 		log.Fatalf("Unable to start transaction: %v\n", err)
 	}
-	defer tx.Rollback(context.Background()) // Откат транзакции в случае ошибки
-
+	defer func() {
+		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil && rollbackErr != pgx.ErrTxClosed {
+			log.Printf("Error during transaction rollback: %v\n", rollbackErr)
+		} // Откат транзакции в случае ошибки
+	}()
 	// Выполнение batch-запросов
 	for _, record := range records {
 		_, err := tx.Exec(
@@ -127,12 +133,12 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 				}
 				return nil, ErrURLExists
 			}
-			return inserted, fmt.Errorf("error executing query: %v", err)
+			return inserted, fmt.Errorf("error executing query: %w", err)
 		}
 		inserted = append(inserted, record.ShortURL)
 	}
 	if err := tx.Commit(context.Background()); err != nil {
-		return inserted, fmt.Errorf("error committing transaction: %v", err)
+		return inserted, fmt.Errorf("error committing transaction: %w", err)
 	}
 	return inserted, nil
 }
