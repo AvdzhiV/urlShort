@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"os"
 	"sync"
+
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"github.com/AvdzhiV/urlShort/internal/constants"
 )
 
 type FileStorage struct {
@@ -107,7 +107,7 @@ func (s *FileStorage) save() error {
 		if err != nil {
 			return fmt.Errorf("failed to write JSON line: %w", err)
 		}
-		_, err = writer.Write([]byte("\n"))
+		_, err = writer.WriteString("\n")
 		if err != nil {
 			return fmt.Errorf("failed to write newline: %w", err)
 		}
@@ -122,21 +122,7 @@ func (s *FileStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var shortURLs []string
-
-	for _, record := range records {
-		if existingShortURL, ok := s.originalMap[record.OriginalURL]; ok {
-			shortURLs = append(shortURLs, existingShortURL)
-			zap.L().Info("URL already exists", zap.String(constants.OriginalURLKey, record.OriginalURL),
-				zap.String("existing_short_url", existingShortURL))
-		} else {
-			s.urlMap[record.ShortURL] = record.OriginalURL
-			s.originalMap[record.OriginalURL] = record.ShortURL
-			shortURLs = append(shortURLs, record.ShortURL)
-			zap.L().Info("Inserting new URL", zap.String("short_url", record.ShortURL),
-				zap.String(constants.OriginalURLKey, record.OriginalURL))
-		}
-	}
+	shortURLs := ProcessRecords(records, s)
 
 	return shortURLs, s.save()
 }

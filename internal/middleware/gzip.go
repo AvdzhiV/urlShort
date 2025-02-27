@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	_ "github.com/AvdzhiV/urlShort/internal/storage"
 	"go.uber.org/zap"
 )
 

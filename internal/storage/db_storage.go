@@ -17,8 +17,6 @@ import (
 
 var ErrURLExists = errors.New("original_url already exists")
 
-// TODO Использовать миграции для создания схемы БД, Исправить батчинг `prepared statement.
-
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
@@ -114,7 +112,7 @@ func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
 		log.Fatalf("Unable to start transaction: %v\n", err)
 	}
 	defer func() {
-		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil && rollbackErr != pgx.ErrTxClosed {
+		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
 			log.Printf("Error during transaction rollback: %v\n", rollbackErr)
 		} // Откат транзакции в случае ошибки
 	}()
