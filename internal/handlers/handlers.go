@@ -154,69 +154,69 @@ func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
-    var reqItems []BatchRequestItem
+	var reqItems []BatchRequestItem
 
-    decoder := json.NewDecoder(r.Body)
-    if err := decoder.Decode(&reqItems); err != nil {
-        zap.L().Error("Failed to decode request body", zap.Error(err))
-        http.Error(w, "Invalid JSON", http.StatusBadRequest)
-        return
-    }
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&reqItems); err != nil {
+		zap.L().Error("Failed to decode request body", zap.Error(err))
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
 
-    if len(reqItems) == 0 {
-        zap.L().Error("Empty batch received")
-        http.Error(w, "Empty batch", http.StatusBadRequest)
-        return
-    }
+	if len(reqItems) == 0 {
+		zap.L().Error("Empty batch received")
+		http.Error(w, "Empty batch", http.StatusBadRequest)
+		return
+	}
 
-    records := make([]storage.BatchRecord, 0, len(reqItems))
-    for _, item := range reqItems {
-        if item.OriginalURL == "" || item.CorrelationID == "" {
-            zap.L().Error("Invalid request data",
-                zap.String("correlation_id", item.CorrelationID),
-                zap.String("original_url", item.OriginalURL))
-            http.Error(w, "Invalid request data", http.StatusBadRequest)
-            return
-        }
+	records := make([]storage.BatchRecord, 0, len(reqItems))
+	for _, item := range reqItems {
+		if item.OriginalURL == "" || item.CorrelationID == "" {
+			zap.L().Error("Invalid request data",
+				zap.String("correlation_id", item.CorrelationID),
+				zap.String("original_url", item.OriginalURL))
+			http.Error(w, "Invalid request data", http.StatusBadRequest)
+			return
+		}
 
-        // Проверка существующих URL перед вставкой
-        existingShortURL, found := h.Store.GetShortURLByOriginalURL(item.OriginalURL)
-        if found {
-            records = append(records, storage.BatchRecord{
-                ShortURL:    existingShortURL,
-                OriginalURL: item.OriginalURL,
-            })
-        } else {
-            records = append(records, storage.BatchRecord{
-                ShortURL:    generateurl.GenerateShortURL(),
-                OriginalURL: item.OriginalURL,
-            })
-        }
-    }
+		// Проверка существующих URL перед вставкой
+		existingShortURL, found := h.Store.GetShortURLByOriginalURL(item.OriginalURL)
+		if found {
+			records = append(records, storage.BatchRecord{
+				ShortURL:    existingShortURL,
+				OriginalURL: item.OriginalURL,
+			})
+		} else {
+			records = append(records, storage.BatchRecord{
+				ShortURL:    generateurl.GenerateShortURL(),
+				OriginalURL: item.OriginalURL,
+			})
+		}
+	}
 
-    // Вставка записей в хранилище
-    shortURLs, err := h.Store.PutBatch(records)
-    if err != nil {
-        zap.L().Error("Failed to save batch records", zap.Error(err))
-        http.Error(w, "Failed to save URLs", http.StatusInternalServerError)
-        return
-    }
+	// Вставка записей в хранилище
+	shortURLs, err := h.Store.PutBatch(records)
+	if err != nil {
+		zap.L().Error("Failed to save batch records", zap.Error(err))
+		http.Error(w, "Failed to save URLs", http.StatusInternalServerError)
+		return
+	}
 
-    respItems := make([]BatchResponseItem, 0, len(reqItems))
-    for i, item := range reqItems {
-        respItems = append(respItems, BatchResponseItem{
-            CorrelationID: item.CorrelationID,
-            ShortURL:      h.Config.BaseURL + "/" + shortURLs[i],
-        })
-    }
+	respItems := make([]BatchResponseItem, 0, len(reqItems))
+	for i, item := range reqItems {
+		respItems = append(respItems, BatchResponseItem{
+			CorrelationID: item.CorrelationID,
+			ShortURL:      h.Config.BaseURL + "/" + shortURLs[i],
+		})
+	}
 
-    w.Header().Set(HeaderContentType, ApplicationJSON)
-    w.WriteHeader(http.StatusCreated)
-    if err := json.NewEncoder(w).Encode(respItems); err != nil {
-        zap.L().Error("Failed to encode response", zap.Error(err))
-        http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-        return
-    }
+	w.Header().Set(HeaderContentType, ApplicationJSON)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(respItems); err != nil {
+		zap.L().Error("Failed to encode response", zap.Error(err))
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 
-    zap.L().Info("Batch response sent successfully", zap.Int("count", len(respItems)))
+	zap.L().Info("Batch response sent successfully", zap.Int("count", len(respItems)))
 }
