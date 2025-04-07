@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"sync"
 )
@@ -22,14 +23,14 @@ func (s *MemoryStorage) Init() error {
 	return nil
 }
 
-func (s *MemoryStorage) Get(shortURL string) (string, bool) {
+func (s *MemoryStorage) Get(ctx context.Context, shortURL string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	origURL, ok := s.urlMap[shortURL]
 	return origURL, ok
 }
 
-func (s *MemoryStorage) Put(shortURL string, originalURL string) (string, error) {
+func (s *MemoryStorage) Put(ctx context.Context, shortURL string, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -42,7 +43,7 @@ func (s *MemoryStorage) Put(shortURL string, originalURL string) (string, error)
 	return shortURL, nil
 }
 
-func (s *MemoryStorage) PutBatch(records []BatchRecord) ([]string, error) {
+func (s *MemoryStorage) PutBatch(ctx context.Context, records []BatchRecord) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	m := &FileStorage{}
@@ -51,7 +52,7 @@ func (s *MemoryStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	return shortURLs, nil
 }
 
-func (s *MemoryStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
+func (s *MemoryStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

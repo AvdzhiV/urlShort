@@ -54,20 +54,18 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortURL := generateurl.GenerateShortURL()
-	existingShortURL, err := h.Store.Put(shortURL, origURL)
-	if err != nil {
-		if errors.Is(err, storage.ErrURLExists) {
-			// Возвращаем существующий shortURL с статусом 409 Conflict
-			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
-			w.Header().Set(HeaderContentType, TextPlain)
-			w.WriteHeader(http.StatusConflict)
-			if _, err := w.Write([]byte(fullShortURL)); err != nil {
-				zap.L().Error("failed to write response", zap.Error(err))
-				return
-			}
+	existingShortURL, err := h.Store.Put(r.Context(), shortURL, origURL)
+	if err != nil && errors.Is(err, storage.ErrURLExists) {
+		// Возвращаем существующий shortURL с статусом 409 Conflict
+		fullShortURL := h.Config.BaseURL + "/" + existingShortURL
+		w.Header().Set(HeaderContentType, TextPlain)
+		w.WriteHeader(http.StatusConflict)
+		if _, err := w.Write([]byte(fullShortURL)); err != nil {
+			zap.L().Error("failed to write response", zap.Error(err))
 			return
 		}
-
+		return
+	} else if err != nil {
 		zap.L().Error("Failed to save URL")
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -86,7 +84,7 @@ func (h *Handler) ShorterHandlerPost(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ShorterHandlerGet(w http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
 
-	origURL, ok := h.Store.Get(shortURL)
+	origURL, ok := h.Store.Get(r.Context(), shortURL)
 	if !ok {
 		http.Error(w, "URL not found", http.StatusNotFound)
 		return
@@ -113,7 +111,7 @@ func (h *Handler) ShorterHandlerAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortURL := generateurl.GenerateShortURL()
-	existingShortURL, err := h.Store.Put(shortURL, req.URL)
+	existingShortURL, err := h.Store.Put(r.Context(), shortURL, req.URL)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLExists) {
 			fullShortURL := h.Config.BaseURL + "/" + existingShortURL
@@ -180,7 +178,7 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Проверка существующих URL перед вставкой
-		existingShortURL, found := h.Store.GetShortURLByOriginalURL(item.OriginalURL)
+		existingShortURL, found := h.Store.GetShortURLByOriginalURL(r.Context(), item.OriginalURL)
 		if found {
 			records = append(records, storage.BatchRecord{
 				ShortURL:    existingShortURL,
@@ -195,7 +193,7 @@ func (h *Handler) ShorterHandlerBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вставка записей в хранилище
-	shortURLs, err := h.Store.PutBatch(records)
+	shortURLs, err := h.Store.PutBatch(r.Context(), records)
 	if err != nil {
 		zap.L().Error("Failed to save batch records", zap.Error(err))
 		http.Error(w, "Failed to save URLs", http.StatusInternalServerError)

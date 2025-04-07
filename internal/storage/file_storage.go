@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,7 +20,7 @@ type FileStorage struct {
 	filePath    string
 }
 
-func NewFileStorage(filePath string) *FileStorage {
+func NewFileStorage( filePath string) *FileStorage {
 	return &FileStorage{
 		filePath:    filePath,
 		urlMap:      make(map[string]string),
@@ -28,7 +29,7 @@ func NewFileStorage(filePath string) *FileStorage {
 	}
 }
 
-func (s *FileStorage) Init() error {
+func (s *FileStorage) Init(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -61,14 +62,14 @@ func (s *FileStorage) Init() error {
 	return nil
 }
 
-func (s *FileStorage) Get(shortURL string) (string, bool) {
+func (s *FileStorage) Get(ctx context.Context,shortURL string) (string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	origURL, ok := s.urlMap[shortURL]
 	return origURL, ok
 }
 
-func (s *FileStorage) Put(shortURL string, originalURL string) (string, error) {
+func (s *FileStorage) Put(ctx context.Context, shortURL string, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -118,7 +119,7 @@ func (s *FileStorage) save() error {
 	return nil
 }
 
-func (s *FileStorage) PutBatch(records []BatchRecord) ([]string, error) {
+func (s *FileStorage) PutBatch(ctx context.Context, records []BatchRecord) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -127,7 +128,7 @@ func (s *FileStorage) PutBatch(records []BatchRecord) ([]string, error) {
 	return shortURLs, s.save()
 }
 
-func (s *FileStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
+func (s *FileStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL string) (string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

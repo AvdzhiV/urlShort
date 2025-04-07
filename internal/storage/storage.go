@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/AvdzhiV/urlShort/configs"
@@ -15,10 +16,10 @@ type URLRecord struct {
 }
 
 type Storage interface {
-	Get(shortURL string) (string, bool)
-	GetShortURLByOriginalURL(originalURL string) (string, bool)
-	Put(shortURL string, originalURL string) (string, error)
-	PutBatch(records []BatchRecord) ([]string, error)
+	Get(ctx context.Context, shortURL string) (string, bool)
+	GetShortURLByOriginalURL(ctx context.Context, originalURL string) (string, bool)
+	Put(ctx context.Context, shortURL string, originalURL string) (string, error)
+	PutBatch(ctx context.Context, records []BatchRecord) ([]string, error)
 }
 
 type BatchRecord struct {
@@ -27,9 +28,9 @@ type BatchRecord struct {
 	OriginalURL string `db:"original_url"`
 }
 
-func StoreInit(cfg configs.Config, logger *zap.Logger) (Storage, error) {
+func NewStore(ctx context.Context, cfg configs.Config, logger *zap.Logger) (Storage, error) {
 	if cfg.DatabaseDSN != "" {
-		dbStore, err := NewDBStorage(cfg.DatabaseDSN)
+		dbStore, err := NewDBStorage(ctx,  cfg.DatabaseDSN)
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect/init db with migrations: %w", err)
 		}
@@ -39,7 +40,7 @@ func StoreInit(cfg configs.Config, logger *zap.Logger) (Storage, error) {
 
 	if cfg.FileStoragePath != "" {
 		fileStore := NewFileStorage(cfg.FileStoragePath)
-		if err := fileStore.Init(); err != nil {
+		if err := fileStore.Init(ctx); err != nil {
 			return nil, fmt.Errorf("failed to initialize file storage: %w", err)
 		}
 		return fileStore, nil

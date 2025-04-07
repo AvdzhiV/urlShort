@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,8 @@ func TestShorterHandlerPost(t *testing.T) {
 	cfg := &configs.Config{
 		BaseURL: "http://localhost:8080",
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Используем MemoryStorage для тестирования
 	store := storage.NewMemoryStorage()
@@ -47,7 +50,7 @@ func TestShorterHandlerPost(t *testing.T) {
 	}
 
 	shortURL := strings.TrimPrefix(responseBody, expectedPrefix)
-	originalURL, ok := store.Get(shortURL)
+	originalURL, ok := store.Get(ctx, shortURL)
 	if !ok {
 		t.Errorf("short URL not found in storage")
 	}
@@ -61,6 +64,9 @@ func TestShorterHandlerGet(t *testing.T) {
 		BaseURL: "http://localhost:8080",
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	store := storage.NewMemoryStorage()
 	if err := store.Init(); err != nil {
 		t.Fatalf("Failed to initialize storage: %v", err)
@@ -69,7 +75,7 @@ func TestShorterHandlerGet(t *testing.T) {
 	// Добавляем тестовые данные в хранилище
 	shortURL := "safqwe"
 	originalURL := "http://example.com"
-	_, err := store.Put(shortURL, originalURL)
+	_, err := store.Put(ctx, shortURL, originalURL)
 	if err != nil {
 		t.Fatalf("Failed to put data in store: %v", err)
 	}
@@ -97,6 +103,9 @@ func TestShorterHandlerAPI(t *testing.T) {
 	cfg := &configs.Config{
 		BaseURL: "http://localhost:8080",
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	store := storage.NewMemoryStorage()
 	if err := store.Init(); err != nil {
@@ -131,7 +140,7 @@ func TestShorterHandlerAPI(t *testing.T) {
 	}
 
 	shortURL := strings.TrimPrefix(resp["result"], expectedPrefix)
-	originalURL, ok := store.Get(shortURL)
+	originalURL, ok := store.Get(ctx, shortURL)
 	if !ok {
 		t.Errorf("short URL not found in storage")
 	}

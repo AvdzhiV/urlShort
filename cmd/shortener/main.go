@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -27,13 +29,16 @@ func main() {
 		}
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	zap.ReplaceGlobals(logger)
 	cfg := configs.ParseParts()
 	if cfg == nil {
 		logger.Fatal("Failed to parse configuration")
 	}
 
-	store, err := storage.StoreInit(*cfg, logger)
+	store, err := storage.NewStore(ctx, *cfg, logger)
 	if err != nil {
 		logger.Fatal("Failed to initialize storage: ", zap.Error(err))
 	}
@@ -50,7 +55,16 @@ func main() {
 	r.Post("/api/shorten", handler.ShorterHandlerAPI)
 	r.Post("/api/shorten/batch", handler.ShorterHandlerBatch)
 
-	if err := http.ListenAndServe(":"+strconv.Itoa(cfg.Port), r); err != nil {
-		logger.Error("Error", zap.Error(err))
-	}
+
+    srv := &http.Server{
+        Addr: ":" + strconv.Itoa(cfg.Port),
+        Handler: r,
+        BaseContext: func(_ net.Listener) context.Context {
+            return ctx
+        },
+    }
+
+    if err := srv.ListenAndServe(); err != nil {
+        logger.Error("Error", zap.Error(err))
+    }
 }

@@ -24,11 +24,11 @@ type DBStorage struct {
 	Pool *pgxpool.Pool
 }
 
-func NewDBStorage(dsn string) (*DBStorage, error) {
+func NewDBStorage(ctx context.Context,  dsn string) (*DBStorage, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
-	pool, err := pgxpool.New(context.Background(), dsn)
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
 	}
@@ -56,10 +56,10 @@ func runMigrations(dsn string) error {
 	return nil
 }
 
-func (dbs *DBStorage) Get(shortURL string) (string, bool) {
+func (dbs *DBStorage) Get(ctx context.Context, shortURL string) (string, bool) {
 	var originalURL string
 	err := dbs.Pool.
-		QueryRow(context.Background(),
+		QueryRow(ctx,
 			"SELECT original_url FROM url_records WHERE short_url = $1",
 			shortURL).
 		Scan(&originalURL)
@@ -69,10 +69,10 @@ func (dbs *DBStorage) Get(shortURL string) (string, bool) {
 	return originalURL, true
 }
 
-func (dbs *DBStorage) GetShortURLByOriginalURL(originalURL string) (string, bool) {
+func (dbs *DBStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL string) (string, bool) {
 	var shortURL string
 	err := dbs.Pool.
-		QueryRow(context.Background(),
+		QueryRow(ctx,
 			"SELECT short_url FROM url_records WHERE original_url = $1",
 			originalURL).
 		Scan(&shortURL)
@@ -82,7 +82,7 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(originalURL string) (string, bool
 	return shortURL, true
 }
 
-func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
+func (dbs *DBStorage) Put(ctx context.Context,shortURL string, originalURL string) (string, error) {
 	query := `
 		INSERT INTO url_records (uuid, short_url, original_url)
 		VALUES (gen_random_uuid(), $1, $2)
@@ -90,10 +90,10 @@ func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
 		DO NOTHING RETURNING short_url
 	`
 	// Вставим запись
-	err := dbs.Pool.QueryRow(context.Background(), query, shortURL, originalURL).Scan(&shortURL)
+	err := dbs.Pool.QueryRow(ctx, query, shortURL, originalURL).Scan(&shortURL)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			existingShortURL, exists := dbs.GetShortURLByOriginalURL(originalURL)
+			existingShortURL, exists := dbs.GetShortURLByOriginalURL(ctx,originalURL)
 			if !exists {
 				return "", ErrURLExists
 			}
@@ -104,28 +104,28 @@ func (dbs *DBStorage) Put(shortURL string, originalURL string) (string, error) {
 	return shortURL, nil
 }
 
-func (dbs *DBStorage) PutBatch(records []BatchRecord) ([]string, error) {
+func (dbs *DBStorage) PutBatch(ctx context.Context, records []BatchRecord) ([]string, error) {
 	inserted := make([]string, 0, len(records))
 
-	tx, err := dbs.Pool.Begin(context.Background())
+	tx, err := dbs.Pool.Begin(ctx)
 	if err != nil {
 		log.Fatalf("Unable to start transaction: %v\n", err)
 	}
 	defer func() {
-		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
 			log.Printf("Error during transaction rollback: %v\n", rollbackErr)
 		} // Откат транзакции в случае ошибки
 	}()
 	// Выполнение batch-запросов
 	for _, record := range records {
 		_, err := tx.Exec(
-			context.Background(),
+			ctx,
 			"INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2)",
 			record.ShortURL, record.OriginalURL,
 		)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				_, ok := dbs.GetShortURLByOriginalURL(record.OriginalURL)
+				_, ok := dbs.GetShortURLByOriginalURL(ctx, record.OriginalURL)
 				if !ok {
 					return nil, ErrURLExists
 				}
