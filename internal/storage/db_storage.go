@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/AvdzhiV/urlShort/internal/queries"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 
@@ -60,7 +61,7 @@ func (dbs *DBStorage) Get(ctx context.Context, shortURL string) (string, bool) {
 	var originalURL string
 	err := dbs.Pool.
 		QueryRow(ctx,
-			"SELECT original_url FROM url_records WHERE short_url = $1",
+			queries.SelectOriginalURL,
 			shortURL).
 		Scan(&originalURL)
 	if err != nil {
@@ -73,7 +74,7 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL 
 	var shortURL string
 	err := dbs.Pool.
 		QueryRow(ctx,
-			"SELECT short_url FROM url_records WHERE original_url = $1",
+			queries.SelectShortlURL,
 			originalURL).
 		Scan(&shortURL)
 	if err != nil {
@@ -83,14 +84,9 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL 
 }
 
 func (dbs *DBStorage) Put(ctx context.Context, shortURL string, originalURL string) (string, error) {
-	query := `
-		INSERT INTO url_records (uuid, short_url, original_url)
-		VALUES (gen_random_uuid(), $1, $2)
-		ON CONFLICT (original_url)
-		DO NOTHING RETURNING short_url
-	`
+
 	// Вставим запись
-	err := dbs.Pool.QueryRow(ctx, query, shortURL, originalURL).Scan(&shortURL)
+	err := dbs.Pool.QueryRow(ctx, queries.PutShortURL, shortURL, originalURL).Scan(&shortURL)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			existingShortURL, exists := dbs.GetShortURLByOriginalURL(ctx, originalURL)
@@ -135,7 +131,7 @@ func (dbs *DBStorage) PutBatch(ctx context.Context, records []BatchRecord) ([]st
 		}
 		inserted = append(inserted, record.ShortURL)
 	}
-	if err := tx.Commit(context.Background()); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return inserted, fmt.Errorf("error committing transaction: %w", err)
 	}
 	return inserted, nil
