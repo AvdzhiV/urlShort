@@ -20,7 +20,7 @@ type FileStorage struct {
 	filePath    string
 }
 
-func NewFileStorage( filePath string) *FileStorage {
+func NewFileStorage(filePath string) *FileStorage {
 	return &FileStorage{
 		filePath:    filePath,
 		urlMap:      make(map[string]string),
@@ -62,7 +62,7 @@ func (s *FileStorage) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *FileStorage) Get(ctx context.Context,shortURL string) (string, bool) {
+func (s *FileStorage) Get(ctx context.Context, shortURL string) (string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	origURL, ok := s.urlMap[shortURL]

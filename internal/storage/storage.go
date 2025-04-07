@@ -30,7 +30,7 @@ type BatchRecord struct {
 
 func NewStore(ctx context.Context, cfg configs.Config, logger *zap.Logger) (Storage, error) {
 	if cfg.DatabaseDSN != "" {
-		dbStore, err := NewDBStorage(ctx,  cfg.DatabaseDSN)
+		dbStore, err := NewDBStorage(ctx, cfg.DatabaseDSN)
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect/init db with migrations: %w", err)
 		}

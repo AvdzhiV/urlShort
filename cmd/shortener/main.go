@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"log"
 	"net"
 	"net/http"
@@ -55,16 +56,15 @@ func main() {
 	r.Post("/api/shorten", handler.ShorterHandlerAPI)
 	r.Post("/api/shorten/batch", handler.ShorterHandlerBatch)
 
+	srv := &http.Server{
+		Addr:    ":" + strconv.Itoa(cfg.Port),
+		Handler: r,
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
+	}
 
-    srv := &http.Server{
-        Addr: ":" + strconv.Itoa(cfg.Port),
-        Handler: r,
-        BaseContext: func(_ net.Listener) context.Context {
-            return ctx
-        },
-    }
-
-    if err := srv.ListenAndServe(); err != nil {
-        logger.Error("Error", zap.Error(err))
-    }
+	if err := srv.ListenAndServe(); err != nil {
+		logger.Error("Error", zap.Error(err))
+	}
 }

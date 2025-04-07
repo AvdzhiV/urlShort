@@ -24,7 +24,7 @@ type DBStorage struct {
 	Pool *pgxpool.Pool
 }
 
-func NewDBStorage(ctx context.Context,  dsn string) (*DBStorage, error) {
+func NewDBStorage(ctx context.Context, dsn string) (*DBStorage, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
@@ -82,7 +82,7 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL 
 	return shortURL, true
 }
 
-func (dbs *DBStorage) Put(ctx context.Context,shortURL string, originalURL string) (string, error) {
+func (dbs *DBStorage) Put(ctx context.Context, shortURL string, originalURL string) (string, error) {
 	query := `
 		INSERT INTO url_records (uuid, short_url, original_url)
 		VALUES (gen_random_uuid(), $1, $2)
@@ -93,7 +93,7 @@ func (dbs *DBStorage) Put(ctx context.Context,shortURL string, originalURL strin
 	err := dbs.Pool.QueryRow(ctx, query, shortURL, originalURL).Scan(&shortURL)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			existingShortURL, exists := dbs.GetShortURLByOriginalURL(ctx,originalURL)
+			existingShortURL, exists := dbs.GetShortURLByOriginalURL(ctx, originalURL)
 			if !exists {
 				return "", ErrURLExists
 			}
