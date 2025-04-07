@@ -84,7 +84,6 @@ func (dbs *DBStorage) GetShortURLByOriginalURL(ctx context.Context, originalURL 
 }
 
 func (dbs *DBStorage) Put(ctx context.Context, shortURL string, originalURL string) (string, error) {
-
 	// Вставим запись
 	err := dbs.Pool.QueryRow(ctx, queries.PutShortURL, shortURL, originalURL).Scan(&shortURL)
 	if err != nil {
