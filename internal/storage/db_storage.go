@@ -115,7 +115,7 @@ func (dbs *DBStorage) PutBatch(ctx context.Context, records []BatchRecord) ([]st
 	for _, record := range records {
 		_, err := tx.Exec(
 			ctx,
-			"INSERT INTO url_records (uuid, short_url, original_url) VALUES (gen_random_uuid(), $1, $2)",
+			queries.InsertBatch,
 			record.ShortURL, record.OriginalURL,
 		)
 		if err != nil {
