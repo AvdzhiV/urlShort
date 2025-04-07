@@ -3,20 +3,25 @@ package configs
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 )
 
 var (
-	addressFlag = flag.String("a", "localhost:8080", "Host for the server")
-	baseURLFlag = flag.String("b", "http://localhost:8080", "Base URL for the short links")
+	addressFlag         = flag.String("a", "localhost:8080", "Host for the server")
+	baseURLFlag         = flag.String("b", "http://localhost:8080", "Base URL for the short links")
+	fileStoragePathFlag = flag.String("f", "data.json", "Path to the file storage")
+	databaseDSNFlag     = flag.String("d", "", "DATABASE_DSN")
 )
 
 type Config struct {
-	Host    string
-	Port    int
-	BaseURL string
+	Host            string
+	BaseURL         string
+	FileStoragePath string
+	DatabaseDSN     string
+	Port            int
 }
 
 func (a Config) String() string {
@@ -30,7 +35,7 @@ func (a *Config) Set(s string) error {
 	}
 	port, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot parse port: %w", err)
 	}
 	a.Host = parts[0]
 	a.Port = port
@@ -39,7 +44,7 @@ func (a *Config) Set(s string) error {
 
 func ParseParts() *Config {
 	flag.Parse()
-
+	var ok bool
 	cfg := &Config{}
 
 	serverAddress := os.Getenv("SERVER_ADDRESS")
@@ -47,10 +52,22 @@ func ParseParts() *Config {
 		serverAddress = *addressFlag
 	}
 
-	cfg.BaseURL = os.Getenv("BASE_URL")
-	if cfg.BaseURL == "" {
+	cfg.BaseURL, ok = os.LookupEnv("BASE_URL")
+	if !ok {
 		cfg.BaseURL = *baseURLFlag
 	}
+
+	databaseDSN := os.Getenv("DATABASE_DSN")
+	if databaseDSN == "" {
+		databaseDSN = *databaseDSNFlag
+	}
+	cfg.DatabaseDSN = databaseDSN
+
+	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
+	if fileStoragePath == "" {
+		fileStoragePath = *fileStoragePathFlag
+	}
+	cfg.FileStoragePath = fileStoragePath
 
 	err := cfg.Set(serverAddress)
 	if err != nil {
